@@ -158,3 +158,6 @@ data/
 handoff*.md
 quitado-context.md
 resumo-para-parceiro.md
+
+# Throwaway devnet keys for spikes: never commit
+.keys/
