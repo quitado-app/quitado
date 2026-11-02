@@ -240,6 +240,9 @@ export function invoiceDetailPage(ctx: PageContext, invoice: Invoice, payUrl: st
                   >View the transaction in the explorer</a
                 >
               </p>
+              <p>
+                <a class="button" href="/pay/${invoice.id}/receipt.pdf">Download receipt (PDF)</a>
+              </p>
             </div>`
           : ''
       }`,
@@ -280,6 +283,7 @@ export function payPage(ctx: PageContext, data: PayPageData): string {
             >View the transaction</a
           >
         </p>
+        <p><a class="button" href="/pay/${invoice.id}/receipt.pdf">Download receipt (PDF)</a></p>
       </div>`
     : html`<div class="card" id="pay-root" data-status-url="${data.statusUrl}">
           <h1>Invoice</h1>
