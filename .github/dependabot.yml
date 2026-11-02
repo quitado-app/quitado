@@ -5,6 +5,21 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # typescript-eslint declares a peer range of typescript <6.1.0, so a TypeScript 7 upgrade
+      # makes `npm ci` fail with ERESOLVE. Lift this once typescript-eslint supports TypeScript 7,
+      # and upgrade both together after running the whole check suite.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+
+      # These are pinned to the versions @solana/pay 1.0.26 declares as peer dependencies
+      # (@solana/kit ^6.9, @solana-program/token ^0.12 and so on). Newer ones are outside those
+      # ranges and break the payment code, so they are upgraded by hand, together with @solana/pay,
+      # when a new @solana/pay release moves its ranges. See docs/spike-devnet.md.
+      - dependency-name: '@solana/kit'
+      - dependency-name: '@solana/keys'
+      - dependency-name: '@solana/kit-plugin-*'
+      - dependency-name: '@solana-program/*'
   - package-ecosystem: github-actions
     directory: /
     schedule:
