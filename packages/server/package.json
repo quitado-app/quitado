@@ -1,0 +1,10 @@
+{
+  "name": "@quitado/server",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "dependencies": {
+    "@quitado/core": "0.0.0"
+  }
+}
