@@ -147,3 +147,14 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Quitado
+*.sqlite
+*.sqlite-*
+*.db
+data/
+
+# Private planning docs live outside this repo; never commit them
+handoff*.md
+quitado-context.md
+resumo-para-parceiro.md
