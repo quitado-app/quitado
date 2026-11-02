@@ -1,0 +1,16 @@
+# Gitleaks configuration. Picked up automatically by `gitleaks git` run from the repository root.
+title = "Quitado gitleaks config"
+
+[extend]
+# Keep every default rule.
+useDefault = true
+
+# Token mint addresses are public on-chain identifiers, not secrets, but their high entropy next to
+# "spl-token=" in Solana Pay URLs trips the generic-api-key rule. Only these two exact, known mints
+# are allowed; anything else with that shape is still reported.
+[[allowlists]]
+description = "Public Solana mint addresses of USDC and USDT"
+regexes = [
+  '''EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v''',
+  '''Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB''',
+]
