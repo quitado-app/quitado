@@ -5,6 +5,11 @@
   "license": "Apache-2.0",
   "type": "module",
   "dependencies": {
-    "@quitado/core": "0.0.0"
+    "@quitado/core": "0.0.0",
+    "@solana/kit": "6.10.0"
+  },
+  "devDependencies": {
+    "@solana-program/memo": "0.11.2",
+    "@solana-program/token": "0.12.0"
   }
 }
