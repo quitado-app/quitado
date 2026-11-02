@@ -21,6 +21,7 @@ By default it listens on `127.0.0.1:3000`. Open `/admin` and sign in with your a
 - **Payment page** (`/pay/<id>`, public, English): shows the invoice, a QR code and a Solana Pay
   link, and refreshes itself when the payment is detected. The page is the only thing a customer
   needs; they never see the owner area.
+- **Payment receipt** (`/pay/<id>/receipt.pdf`, public): a PDF the customer can download once the invoice is paid; see [receipts.md](./receipts.md).
 - **Payment detection** runs in the same process; see [payment-detection.md](./payment-detection.md).
 
 ## Access model

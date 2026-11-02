@@ -15,6 +15,8 @@ interface Response {
   status: number;
   headers: Record<string, string | string[] | undefined>;
   body: string;
+  /** The raw bytes, for binary responses such as PDFs. */
+  buffer: Buffer;
 }
 
 describe('web app', () => {
@@ -72,6 +74,7 @@ describe('web app', () => {
               status: res.statusCode ?? 0,
               headers: res.headers,
               body: Buffer.concat(chunks).toString('utf8'),
+              buffer: Buffer.concat(chunks),
             }),
           );
         },
@@ -441,6 +444,56 @@ describe('web app', () => {
       expect(page.body).toContain('https://explorer.solana.com/tx/sig123');
       expect(page.body).not.toContain('Open in wallet');
       expect(page.body).not.toContain('data-status-url');
+    });
+
+    describe('receipt', () => {
+      const settle = () => {
+        const invoice = store.get(id)!;
+        store.settle(
+          recordPayment(invoice, {
+            signature: 'sig123',
+            amount: invoice.amount,
+            receivedAt: NOW + 1000,
+          }),
+        );
+      };
+
+      it('does not exist until the invoice is paid', async () => {
+        const response = await call(`/pay/${id}/receipt.pdf`);
+        expect(response.status).toBe(404);
+        // No link to a receipt on an unpaid page either.
+        expect((await call(`/pay/${id}`)).body).not.toContain('receipt.pdf');
+      });
+
+      it('is served as a PDF to anyone with the invoice link once it is paid', async () => {
+        settle();
+        const response = await call(`/pay/${id}/receipt.pdf`);
+        expect(response.status).toBe(200);
+        expect(response.headers['content-type']).toBe('application/pdf');
+        expect(response.headers['content-disposition']).toBe(
+          `inline; filename="receipt-${id}.pdf"`,
+        );
+        expect(response.headers['cache-control']).toBe('no-store');
+        expect(response.headers['x-content-type-options']).toBe('nosniff');
+        expect(response.buffer.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+        expect(response.buffer.toString('latin1').endsWith('%%EOF\n')).toBe(true);
+        expect(Number(response.headers['content-length'])).toBe(response.buffer.length);
+      });
+
+      it('is linked from the customer page and from the owner page', async () => {
+        settle();
+        const link = `href="/pay/${id}/receipt.pdf"`;
+        expect((await call(`/pay/${id}`)).body).toContain(link);
+        const cookie = await login();
+        expect((await call(`/admin/invoices/${id}`, { headers: { cookie } })).body).toContain(link);
+      });
+
+      it('answers 404 for unknown and malformed ids, and only to GET', async () => {
+        settle();
+        expect((await call('/pay/abcdefghijklmnopqrstuv/receipt.pdf')).status).toBe(404);
+        expect((await call('/pay/not-an-id/receipt.pdf')).status).toBe(404);
+        expect((await call(`/pay/${id}/receipt.pdf`, { method: 'POST' })).status).toBe(405);
+      });
     });
   });
 

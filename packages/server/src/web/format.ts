@@ -12,6 +12,16 @@ export function formatDate(ms: number, utcOffsetMinutes: number): string {
   return new Date(ms + utcOffsetMinutes * 60_000).toISOString().slice(0, 10);
 }
 
+/** "2026-11-02 12:34 (UTC-03:00)": date and time in a fixed UTC offset, with the offset spelled out. */
+export function formatDateTime(ms: number, utcOffsetMinutes: number): string {
+  const iso = new Date(ms + utcOffsetMinutes * 60_000).toISOString();
+  const sign = utcOffsetMinutes < 0 ? '-' : '+';
+  const abs = Math.abs(utcOffsetMinutes);
+  const hours = String(Math.floor(abs / 60)).padStart(2, '0');
+  const minutes = String(abs % 60).padStart(2, '0');
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} (UTC${sign}${hours}:${minutes})`;
+}
+
 /**
  * Turns a YYYY-MM-DD date into the last second of that day in the given UTC offset.
  * Returns undefined for anything that is not a real calendar date.

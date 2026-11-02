@@ -3,7 +3,7 @@
 Open-source, non-custodial USDC/USDT invoicing on Solana for Brazilian freelancers.
 
 > **Status: early development, not ready for production use.** The core, storage, payment detection
-> and the web app work and are tested (including against a real devnet). PDF receipts, the Brazilian
+> and the web app work and are tested (including against a real devnet). The Brazilian
 > tax layer (exchange-rate references and accountant exports) and the Docker setup are still being
 > built.
 
@@ -20,6 +20,7 @@ You run your own instance (one owner per instance). There is no hosted service.
 
 - [Web app: running it, access and security](docs/web.md)
 - [Payment detection](docs/payment-detection.md)
+- [Payment receipts (PDF)](docs/receipts.md)
 - [Devnet spike: what we verified about Solana Pay](docs/spike-devnet.md)
 - [Security policy](SECURITY.md)
 

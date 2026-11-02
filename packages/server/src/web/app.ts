@@ -33,6 +33,7 @@ import {
   type NewInvoiceValues,
   type PageContext,
 } from './pages.ts';
+import { buildReceiptPdf } from '../receipt/receipt.ts';
 import { qrSvg } from './qr.ts';
 import { buildPaymentUrl } from './solana-pay.ts';
 
@@ -108,7 +109,7 @@ export function createWebServer(deps: AppDeps): Server {
   function send(
     ctx: Context,
     status: number,
-    body: string,
+    body: string | Buffer,
     type = 'text/html; charset=utf-8',
     headers: Record<string, string | string[]> = {},
   ): void {
@@ -353,6 +354,27 @@ export function createWebServer(deps: AppDeps): Server {
             statusUrl: `/api/pay/${invoice.id}/status`,
           }),
         );
+      },
+    },
+    {
+      // Public like the payment page: whoever has the invoice link can download its receipt.
+      method: 'GET',
+      pattern: new RegExp(`^/pay/${ID}/receipt\\.pdf$`),
+      handler: (ctx, match) => {
+        const invoice = store.get(match[1]!);
+        // A receipt documents a payment, so an unpaid invoice has none.
+        if (!invoice || invoice.status !== 'paid') return notFound(ctx);
+        const pdf = buildReceiptPdf({
+          invoice,
+          ownerName: config.ownerName,
+          recipient: config.recipient,
+          cluster: config.cluster,
+          utcOffsetMinutes: config.utcOffsetMinutes,
+          generatedAt: ctx.now,
+        });
+        send(ctx, 200, pdf, 'application/pdf', {
+          'Content-Disposition': `inline; filename="receipt-${invoice.id}.pdf"`,
+        });
       },
     },
     {
