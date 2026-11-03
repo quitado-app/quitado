@@ -265,6 +265,8 @@ export function payPage(ctx: PageContext, data: PayPageData): string {
   const { invoice } = data;
   const payment = invoice.payment;
   const network = ctx.cluster === 'devnet' ? 'Solana devnet (test network)' : 'Solana';
+  const onNetwork =
+    ctx.cluster === 'devnet' ? 'the Solana devnet test network' : 'the Solana network';
 
   const details = html`<div class="row">
       <div><span class="label">Billed to</span>${invoice.clientName}</div>
@@ -318,8 +320,8 @@ export function payPage(ctx: PageContext, data: PayPageData): string {
             <button class="secondary" type="button" data-copy="${data.recipient}">Copy</button>
           </div>
           <p class="muted">
-            Send ${amountOf(invoice)} on the ${network} network. A payment in another token or on
-            another network will not mark this invoice as paid.
+            Send ${amountOf(invoice)} on ${onNetwork}. A payment in another token or on another
+            network will not mark this invoice as paid.
           </p>
         </div>`;
 
