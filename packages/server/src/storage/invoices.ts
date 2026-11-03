@@ -1,5 +1,6 @@
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite';
 import type { Invoice, InvoiceStatus, Payment } from '@quitado/core';
+import { readStats, type InvoiceStats } from './stats.ts';
 
 export type StorageErrorCode =
   | 'duplicate_id'
@@ -41,6 +42,8 @@ export interface InvoiceStore {
    * change and the payment row succeed or fail together. Idempotent for the same signature.
    */
   settle(paid: Invoice): void;
+  /** Usage numbers for the owner. `utcOffsetMinutes` decides where months start and end. */
+  stats(now: number, utcOffsetMinutes: number): InvoiceStats;
 }
 
 type Row = Record<string, SQLOutputValue>;
@@ -222,6 +225,10 @@ export function createInvoiceStore(db: DatabaseSync): InvoiceStore {
 
     listOpen() {
       return selectOpen.all().map(toInvoice);
+    },
+
+    stats(now, utcOffsetMinutes) {
+      return readStats(db, now, utcOffsetMinutes);
     },
 
     settle(paid) {

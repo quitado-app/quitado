@@ -1,6 +1,7 @@
 import { isOverdue, type Asset, type Cluster, type Invoice } from '@quitado/core';
 import { displayAmount, explorerTxUrl, formatDate, shorten } from './format.ts';
 import { html, raw, type Raw } from './html.ts';
+import type { InvoiceStats } from '../storage/stats.ts';
 
 export interface PageContext {
   cluster: Cluster;
@@ -17,6 +18,7 @@ function layout(options: { title: string; body: Raw; cluster: Cluster; admin?: b
     ? html`<nav>
         <a href="/admin">Invoices</a>
         <a href="/admin/invoices/new">New invoice</a>
+        <a href="/admin/stats">Stats</a>
         <form class="inline" method="post" action="/admin/logout">
           <button class="link" type="submit">Sign out</button>
         </form>
@@ -342,5 +344,89 @@ export function messagePage(
       <h1>${title}</h1>
       <p>${message}</p>
     </div>`,
+  });
+}
+
+export function statsPage(ctx: PageContext, stats: InvoiceStats): string {
+  const paidShare = stats.total === 0 ? '0%' : `${Math.round((stats.paid / stats.total) * 100)}%`;
+  const tile = (label: string, value: string | number) =>
+    html`<div class="tile">
+      <span class="label">${label}</span><span class="figure">${value}</span>
+    </div>`;
+
+  const assetRows = stats.byAsset.map(
+    (asset) =>
+      html`<tr>
+        <td>${asset.symbol}</td>
+        <td class="num">${asset.invoices}</td>
+        <td class="num">${asset.paid}</td>
+        <td class="num">${displayAmount(asset.invoiced, asset.decimals)}</td>
+        <td class="num">${displayAmount(asset.received, asset.decimals)}</td>
+      </tr>`,
+  );
+  const monthRows = stats.byMonth.map(
+    (entry) =>
+      html`<tr>
+        <td>${entry.month}</td>
+        <td>${entry.symbol}</td>
+        <td class="num">${entry.payments}</td>
+        <td class="num">${displayAmount(entry.received, entry.decimals)}</td>
+      </tr>`,
+  );
+
+  return layout({
+    title: 'Stats · Quitado',
+    cluster: ctx.cluster,
+    admin: true,
+    body: html`<h1>Stats</h1>
+      <p class="muted">
+        Computed from this instance's own database. Nothing is sent anywhere. Months follow the
+        instance's UTC offset.
+      </p>
+      <div class="tiles">
+        ${tile('Invoices issued', stats.total)} ${tile('Paid', `${stats.paid} (${paidShare})`)}
+        ${tile('Open', stats.open)} ${tile('Past due', stats.overdue)}
+      </div>
+      ${
+        stats.total === 0
+          ? html`<div class="card"><p>No invoices yet, so there is nothing to total.</p></div>`
+          : html`<h2>By token</h2>
+              <div class="card">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Token</th>
+                      <th class="num">Invoices</th>
+                      <th class="num">Paid</th>
+                      <th class="num">Invoiced</th>
+                      <th class="num">Received</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${assetRows}
+                  </tbody>
+                </table>
+              </div>
+              <h2>Payments by month</h2>
+              <div class="card">
+                ${
+                  stats.byMonth.length === 0
+                    ? html`<p>No payments received yet.</p>`
+                    : html`<table>
+                        <thead>
+                          <tr>
+                            <th>Month</th>
+                            <th>Token</th>
+                            <th class="num">Payments</th>
+                            <th class="num">Received</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${monthRows}
+                        </tbody>
+                      </table>`
+                }
+              </div>`
+      }`,
   });
 }

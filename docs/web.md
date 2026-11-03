@@ -17,7 +17,7 @@ By default it listens on `127.0.0.1:3000`. Open `/admin` and sign in with your a
 
 ## What it does
 
-- **Owner area** (`/admin`, sign-in required): list invoices, create one, copy its payment link.
+- **Owner area** (`/admin`, sign-in required): list invoices, create one, copy its payment link, and see your usage numbers on `/admin/stats`: invoices issued, paid, open and past due, totals invoiced and received per token (exact, from the database), and payments per month. They are computed from this instance's own database and nothing is sent anywhere; there is no telemetry.
 - **Payment page** (`/pay/<id>`, public, English): shows the invoice, a QR code and a Solana Pay
   link, and refreshes itself when the payment is detected. The page is the only thing a customer
   needs; they never see the owner area.

@@ -30,6 +30,7 @@ import {
   messagePage,
   newInvoicePage,
   payPage,
+  statsPage,
   type NewInvoiceValues,
   type PageContext,
 } from './pages.ts';
@@ -313,6 +314,13 @@ export function createWebServer(deps: AppDeps): Server {
           }
         },
         { write: true },
+      ),
+    },
+    {
+      method: 'GET',
+      pattern: /^\/admin\/stats$/,
+      handler: admin((ctx) =>
+        send(ctx, 200, statsPage(pageContext(ctx), store.stats(ctx.now, config.utcOffsetMinutes))),
       ),
     },
     {
