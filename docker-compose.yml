@@ -1,0 +1,34 @@
+# One-command self-hosting:
+#
+#   cp .env.example .env     # fill in QUITADO_RECIPIENT and QUITADO_ACCESS_SECRET at least
+#   docker compose up -d
+#
+# The app listens on 127.0.0.1:3000 only. To serve it to the internet, put a reverse proxy that
+# terminates TLS in front of it (see docs/deploy.md) and set QUITADO_BASE_URL to the https address
+# and QUITADO_TRUST_PROXY=true.
+services:
+  quitado:
+    build: .
+    image: quitado:local
+    restart: unless-stopped
+    env_file: .env
+    # Set here so they win over anything in .env: these describe the container, not the instance.
+    environment:
+      QUITADO_HOST: 0.0.0.0
+      QUITADO_PORT: '3000'
+      QUITADO_DB_PATH: /data/quitado.db
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - quitado-data:/data
+    # Hardening: the app only needs to write to /data.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  quitado-data:

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, loadConfig } from './config.ts';
+import { ConfigError, configWarnings, loadConfig } from './config.ts';
 
 const RECIPIENT = 'E2pDM8RRwhiPhJVzpF1sN8JzvUDmPP6eG7M4xH8FbQxL';
 const MINT = 'CWEDDyZExHR2bUgqu6LFqcvGS6ZZWB5MYgetmNZMkJTw';
@@ -96,6 +96,75 @@ describe('loadConfig', () => {
     expect(() =>
       loadConfig({ ...base, QUITADO_ACCESS_SECRET: 'tooshort', QUITADO_PORT: '0' }),
     ).toThrow(expect.objectContaining({ message: expect.not.stringContaining('tooshort') }));
+  });
+
+  describe('https on mainnet', () => {
+    it('refuses a public http address on mainnet, where real money and the sign-in would travel in clear text', () => {
+      expect(() => loadConfig({ ...base, QUITADO_BASE_URL: 'http://pay.example.com' })).toThrow(
+        /must use https on mainnet-beta/,
+      );
+      expect(() => loadConfig({ ...base, QUITADO_BASE_URL: 'http://203.0.113.7:3000' })).toThrow(
+        /must use https on mainnet-beta/,
+      );
+    });
+
+    it.each([
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://[::1]:3000',
+      'https://pay.example.com',
+    ])('accepts %s on mainnet', (url) => {
+      expect(() => loadConfig({ ...base, QUITADO_BASE_URL: url })).not.toThrow();
+    });
+
+    it('does not apply to devnet, where no real money is involved', () => {
+      expect(() =>
+        loadConfig({
+          ...base,
+          QUITADO_CLUSTER: 'devnet',
+          QUITADO_ASSETS: `TEST:${MINT}:6`,
+          QUITADO_BASE_URL: 'http://pay.example.com',
+        }),
+      ).not.toThrow();
+    });
+  });
+
+  describe('configWarnings', () => {
+    const warningsFor = (extra: Record<string, string> = {}) =>
+      configWarnings(loadConfig({ ...base, ...extra }));
+
+    it('warns about the public RPC on mainnet, and stops once an RPC is set', () => {
+      expect(warningsFor().join('\n')).toMatch(/QUITADO_RPC_URL is not set/);
+      expect(warningsFor({ QUITADO_RPC_URL: 'https://rpc.example.com/key' })).toEqual([]);
+    });
+
+    it('warns about confirmed commitment on mainnet only', () => {
+      const rpc = { QUITADO_RPC_URL: 'https://rpc.example.com/key' };
+      expect(warningsFor({ ...rpc, QUITADO_COMMITMENT: 'confirmed' }).join('\n')).toMatch(
+        /confirmed marks invoices paid before/,
+      );
+      expect(
+        configWarnings(
+          loadConfig({
+            ...base,
+            QUITADO_CLUSTER: 'devnet',
+            QUITADO_ASSETS: `TEST:${MINT}:6`,
+            QUITADO_COMMITMENT: 'confirmed',
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it('suggests QUITADO_TRUST_PROXY when the address is https but the proxy is not trusted', () => {
+      const rpc = { QUITADO_RPC_URL: 'https://rpc.example.com/key' };
+      const https = { ...rpc, QUITADO_BASE_URL: 'https://pay.example.com' };
+      expect(warningsFor(https).join('\n')).toMatch(/QUITADO_TRUST_PROXY=true/);
+      expect(warningsFor({ ...https, QUITADO_TRUST_PROXY: 'true' })).toEqual([]);
+    });
+
+    it('never mentions the secret', () => {
+      expect(warningsFor().join('\n')).not.toContain(SECRET);
+    });
   });
 
   it('refuses custom assets on mainnet, where phishing mints would be a risk', () => {
