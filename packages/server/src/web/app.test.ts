@@ -497,6 +497,57 @@ describe('web app', () => {
     });
   });
 
+  describe('stats page', () => {
+    beforeEach(() => start());
+
+    it('needs a sign-in, like the rest of the owner area', async () => {
+      const response = await call('/admin/stats');
+      expect(response.status).toBe(303);
+      expect(response.headers.location).toBe('/admin/login');
+    });
+
+    it('is linked from the owner menu', async () => {
+      const cookie = await login();
+      expect((await call('/admin', { headers: { cookie } })).body).toContain('href="/admin/stats"');
+    });
+
+    it('says so when there is nothing to total yet', async () => {
+      const cookie = await login();
+      const response = await call('/admin/stats', { headers: { cookie } });
+      expect(response.status).toBe(200);
+      expect(response.body).toContain('Invoices issued');
+      expect(response.body).toContain('No invoices yet, so there is nothing to total.');
+    });
+
+    it('shows counts, totals per token and payments per month', async () => {
+      const cookie = await login();
+      const paidId = await createInvoiceViaForm(cookie, { amount: '100' });
+      await createInvoiceViaForm(cookie, { amount: '50' });
+      const invoice = store.get(paidId)!;
+      store.settle(
+        recordPayment(invoice, {
+          signature: 'sig-stats',
+          amount: invoice.amount + 2_500_000n, // paid 2.50 over
+          receivedAt: NOW,
+        }),
+      );
+
+      const body = (await call('/admin/stats', { headers: { cookie } })).body;
+      expect(body).toContain('2026-11'); // month of NOW, in the instance offset
+      expect(body).toContain('150.00'); // invoiced
+      expect(body).toContain('102.50'); // received, including the overpayment
+      expect(body).toContain('1 (50%)'); // paid share
+      expect(body).toContain('USDC');
+      expect(body).toContain('Nothing is sent anywhere');
+    });
+
+    it('loads nothing from other sites', async () => {
+      const cookie = await login();
+      const body = (await call('/admin/stats', { headers: { cookie } })).body;
+      expect(body).not.toMatch(/(?:src|href)="https?:\/\//);
+    });
+  });
+
   it('rate limits the public pages per client', async () => {
     await start({ publicMax: 3 });
     for (let i = 0; i < 3; i++)

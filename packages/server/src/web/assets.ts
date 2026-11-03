@@ -90,6 +90,9 @@ th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--lin
 th { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 td.num, th.num { text-align: right; white-space: nowrap; }
 td.nowrap { white-space: nowrap; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.tile .figure { display: block; font-size: 1.6rem; font-weight: 700; }
 .copy-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .copy-row .mono { flex: 1 1 260px; }
 footer { margin-top: 32px; font-size: 0.85rem; color: var(--muted); text-align: center; }
