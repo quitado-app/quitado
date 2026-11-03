@@ -44,9 +44,9 @@ COPY --from=build /app/packages/server/dist packages/server/dist
 # The database lives in a volume so it survives container upgrades.
 RUN mkdir -p /data && chown node:node /data
 VOLUME ["/data"]
+# The port is not set here: the app uses QUITADO_PORT, then PORT (set by hosting platforms), then 3000.
 ENV QUITADO_DB_PATH=/data/quitado.db \
-    QUITADO_HOST=0.0.0.0 \
-    QUITADO_PORT=3000
+    QUITADO_HOST=0.0.0.0
 
 LABEL org.opencontainers.image.title="Quitado" \
       org.opencontainers.image.description="Open-source, non-custodial USDC/USDT invoicing on Solana" \
@@ -58,7 +58,7 @@ USER node
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.QUITADO_PORT||'3000')+'/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.QUITADO_PORT||process.env.PORT||'3000')+'/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
 
 # Node is PID 1 and start.js handles SIGTERM, so `docker stop` shuts down cleanly.
 CMD ["node", "packages/server/dist/start.js"]

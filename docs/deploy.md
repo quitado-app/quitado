@@ -19,13 +19,63 @@ On a public mainnet instance set:
 
 At startup the app prints a warning for each of these it thinks you forgot.
 
-## Upgrading and backups
+## On Railway
 
-Upgrade with `git pull && docker compose up -d --build`. The data volume is kept.
+Railway builds the `Dockerfile` at the root of the repository. Settings checked against Railway's
+documentation (November 2026):
 
-Back up the volume. The invoices (client names, descriptions) exist only in the database; payments can
-be found again on chain, invoices cannot. Take a snapshot of the volume, or copy the database file
-while the app is stopped.
+1. **Volume:** attach one to the service and mount it at `/data`. Railway mounts volumes as `root`,
+   and the image runs as a non-root user, so also set the service variable **`RAILWAY_RUN_UID=0`**.
+   Without it the app cannot write its database.
+2. **Port:** do not set `QUITADO_PORT`. Railway sets `PORT` and detects the port the app binds; the
+   app uses `PORT` when `QUITADO_PORT` is not set.
+3. **Healthcheck:** set the healthcheck path to `/healthz`. Railway only switches traffic to a new
+   deployment once that returns 200, so a broken release never replaces a working one.
+4. **Variables:** the same ones as above (`QUITADO_RECIPIENT`, `QUITADO_ACCESS_SECRET`,
+   `QUITADO_BASE_URL`, `QUITADO_TRUST_PROXY=true`, `QUITADO_RPC_URL`, and optionally
+   `QUITADO_OWNER_NAME` and `QUITADO_UTC_OFFSET_MINUTES`).
+5. **Domain:** add it under the service's networking settings. Railway shows a CNAME record **and** a
+   TXT record that proves you own the domain; the domain will not verify with only one of them. For
+   the root of a domain (no `www.` or other prefix) Railway supports ALIAS and CNAME flattening, so
+   use an ALIAS record if your DNS provider has no CNAME at the root.
+6. **One replica only.** The database is a SQLite file on a volume, so do not scale the service to
+   more than one instance.
+
+There is no `railway.toml` in the repository on purpose: Railway has deprecated config-as-code
+files, and everything above is set in the dashboard.
+
+## Upgrading
+
+`git pull && docker compose up -d --build`. The data volume is kept. On Railway, a new deployment
+replaces the old one after the healthcheck passes.
+
+## Backups
+
+The invoices (client names, descriptions) exist only in the database: payments can be found again
+on chain, invoices cannot. Back up regularly.
+
+```bash
+docker compose exec quitado node packages/server/dist/backup-cli.js
+docker compose cp quitado:/data/backups ./backups      # copy them out of the server
+```
+
+The command takes a consistent snapshot while the app keeps running, writes one self-contained file
+to `/data/backups/quitado-<UTC time>.db` (readable by its owner only), and opens the copy to check its
+integrity. It never overwrites an existing file. Pass a path to choose the destination. It reads
+`QUITADO_DB_PATH`, like the app.
+
+A backup in the same volume as the database does not protect you from losing the volume, so copy it
+somewhere else. To restore, stop the app, put the file at `QUITADO_DB_PATH` and start it again.
+
+## Things to know before taking real money
+
+- **The stablecoin issuers can freeze token accounts.** Both USDC and USDT have a freeze authority.
+  That is a property of the tokens, not of Quitado, and nothing in a non-custodial app can prevent it.
+- **Quitado never holds your funds or keys,** but you are responsible for the wallet that receives
+  them and for the `.env` file and the access secret.
+- **A payment smaller than the invoice does not settle it,** and two partial payments are not added
+  together. The customer has to pay the full amount.
+- **Receipts are not tax documents.** See [receipts.md](./receipts.md).
 
 ## Before the first real payment (mainnet checklist)
 
@@ -40,3 +90,4 @@ while the app is stopped.
    settled at `finalized` commitment.
 6. Open the receipt and follow its explorer link.
 7. Check `docker compose logs`: every settled payment is logged as one JSON line.
+8. Take a first backup and confirm you can open the file.

@@ -72,6 +72,25 @@ describe('loadConfig', () => {
     expect(loadConfig({ ...base, QUITADO_PORT: '4000' }).baseUrl).toBe('http://localhost:4000');
   });
 
+  describe('port', () => {
+    it('uses QUITADO_PORT first, then the PORT that hosting platforms set, then 3000', () => {
+      expect(loadConfig({ ...base }).port).toBe(3000);
+      expect(loadConfig({ ...base, PORT: '8080' }).port).toBe(8080);
+      expect(loadConfig({ ...base, PORT: '8080', QUITADO_PORT: '4000' }).port).toBe(4000);
+    });
+
+    it('validates PORT too, naming the variable that is wrong', () => {
+      expect(() => loadConfig({ ...base, PORT: 'abc' })).toThrow(/PORT must be an integer/);
+      expect(() => loadConfig({ ...base, QUITADO_PORT: '70000', PORT: '8080' })).toThrow(
+        /QUITADO_PORT must be an integer/,
+      );
+    });
+
+    it('builds the default base URL from whichever port is in use', () => {
+      expect(loadConfig({ ...base, PORT: '8080' }).baseUrl).toBe('http://localhost:8080');
+    });
+  });
+
   it('lists every problem at once', () => {
     const error = (() => {
       try {
