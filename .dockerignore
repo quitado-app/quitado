@@ -1,0 +1,22 @@
+# Keep the build context small and, above all, keep secrets and local state out of the image.
+.git
+.github
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+coverage
+
+# Secrets and local data: never in an image
+.env
+.env.*
+.keys
+data
+*.db
+*.db-shm
+*.db-wal
+
+# Not needed to build or run
+docs
+*.md
+packages/spike-devnet/src
+packages/spike-devnet/tsconfig.json

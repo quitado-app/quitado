@@ -1,5 +1,5 @@
 // Entry point: node packages/server/dist/start.js (configuration comes from QUITADO_* variables).
-import { ConfigError, loadConfig } from './config.ts';
+import { ConfigError, configWarnings, loadConfig } from './config.ts';
 import { startInstance } from './instance.ts';
 
 let config;
@@ -12,6 +12,8 @@ try {
   }
   throw error;
 }
+
+for (const warning of configWarnings(config)) console.warn(`warning: ${warning}`);
 
 const instance = await startInstance(config);
 console.log(

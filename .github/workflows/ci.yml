@@ -45,3 +45,30 @@ jobs:
           tar -xzf gitleaks.tar.gz gitleaks
       - name: Scan history for secrets
         run: ./gitleaks git --redact --verbose
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: docker build -t quitado:ci .
+      - name: Start it and wait until it is healthy
+        run: |
+          docker run -d --name quitado -p 3000:3000 \
+            -e QUITADO_RECIPIENT=E2pDM8RRwhiPhJVzpF1sN8JzvUDmPP6eG7M4xH8FbQxL \
+            -e QUITADO_ACCESS_SECRET=ci-only-secret-not-used-anywhere-123456 \
+            -e QUITADO_BASE_URL=http://localhost:3000 \
+            quitado:ci
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:3000/healthz && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:3000/healthz
+      - name: Check it runs as a non-root user
+        run: test "$(docker exec quitado id -u)" != "0"
+      - name: Check it shuts down cleanly on SIGTERM
+        run: |
+          docker stop quitado
+          test "$(docker inspect -f '{{.State.ExitCode}}' quitado)" = "0"

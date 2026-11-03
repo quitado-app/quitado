@@ -82,6 +82,15 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('protocol');
     if (parsed.pathname !== '/' || parsed.search || parsed.hash) throw new Error('path');
     baseUrl = parsed.origin;
+    // Real money: the payment link, the owner's sign-in and its cookie must never travel in clear
+    // text. Plain http is accepted only for trying the app on your own machine.
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname);
+    if (cluster === 'mainnet-beta' && parsed.protocol === 'http:' && !local) {
+      problems.push(
+        'QUITADO_BASE_URL must use https on mainnet-beta (http is only allowed for localhost): ' +
+          'put a reverse proxy with TLS in front of the app',
+      );
+    }
   } catch {
     problems.push(
       'QUITADO_BASE_URL must be an http(s) URL without a path, e.g. https://pay.example.com',
@@ -163,4 +172,34 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     utcOffsetMinutes,
     trustProxy: trustProxyRaw === 'true',
   };
+}
+
+/**
+ * Settings that are valid but probably not what you want on a real instance. They are printed at
+ * startup instead of refusing to start, because each one has legitimate uses.
+ */
+export function configWarnings(config: Config): string[] {
+  const warnings: string[] = [];
+  if (config.cluster === 'mainnet-beta') {
+    if (config.rpcUrl === 'https://api.mainnet-beta.solana.com') {
+      warnings.push(
+        'QUITADO_RPC_URL is not set: the public Solana RPC is rate limited and not meant for ' +
+          'production, so payments may be detected late or not at all. Use a dedicated RPC provider.',
+      );
+    }
+    if (config.commitment === 'confirmed') {
+      warnings.push(
+        'QUITADO_COMMITMENT=confirmed marks invoices paid before the transaction is final. ' +
+          'finalized is slower by a few seconds but cannot be rolled back.',
+      );
+    }
+  }
+  if (config.baseUrl.startsWith('https://') && !config.trustProxy) {
+    warnings.push(
+      'QUITADO_BASE_URL is https, so a reverse proxy probably terminates TLS in front of this ' +
+        'app. If so, set QUITADO_TRUST_PROXY=true: otherwise every visitor looks like the proxy ' +
+        'and they all share one rate limit.',
+    );
+  }
+  return warnings;
 }
