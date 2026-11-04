@@ -18,6 +18,7 @@ You run your own instance (one owner per instance). There is no hosted service.
 ## Documentation
 
 - [Web app: running it, access and security](docs/web.md)
+- [Guia rápido em português](docs/pt-BR/guia-rapido.md)
 - [Deploying with Docker, and the mainnet checklist](docs/deploy.md)
 - [Payment detection](docs/payment-detection.md)
 - [Payment receipts (PDF)](docs/receipts.md)
