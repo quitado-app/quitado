@@ -72,7 +72,8 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     );
   }
 
-  const port = integer('QUITADO_PORT', 3000, 1, 65535);
+  // Hosting platforms (Railway, Heroku, Render...) tell the app its port through PORT.
+  const port = integer(get('QUITADO_PORT') === undefined ? 'PORT' : 'QUITADO_PORT', 3000, 1, 65535);
   const host = get('QUITADO_HOST') ?? '127.0.0.1';
 
   const baseUrlRaw = get('QUITADO_BASE_URL') ?? `http://localhost:${port}`;

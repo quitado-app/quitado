@@ -121,6 +121,11 @@ describe('web app', () => {
   describe('basics and security headers', () => {
     beforeEach(() => start());
 
+    it('does not let slow clients hold connections open for minutes', () => {
+      expect(server.headersTimeout).toBe(15_000);
+      expect(server.requestTimeout).toBe(30_000);
+    });
+
     it('answers the health check and redirects the root', async () => {
       expect(JSON.parse((await call('/healthz')).body)).toEqual({ ok: true });
       const root = await call('/');

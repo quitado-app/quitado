@@ -415,7 +415,10 @@ export function createWebServer(deps: AppDeps): Server {
     return request.socket.remoteAddress ?? 'unknown';
   };
 
-  return createServer((request, response) => {
+  // Slow or stalled clients must not be able to hold connections open: headers within 15 seconds
+  // and the whole request within 30 (Node's default is 5 minutes, and our bodies are tiny).
+  const serverOptions = { headersTimeout: 15_000, requestTimeout: 30_000 };
+  return createServer(serverOptions, (request, response) => {
     void (async () => {
       const ctx: Context = {
         request,
