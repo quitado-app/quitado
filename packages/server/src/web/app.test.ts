@@ -569,6 +569,21 @@ describe('web app', () => {
     expect((await call('/admin/login')).body).toContain('Test network (devnet)');
   });
 
+  it('tells the customer which network to pay on, in plain words on mainnet and devnet', async () => {
+    await start();
+    const mainnetId = await createInvoiceViaForm(await login());
+    const mainnet = (await call(`/pay/${mainnetId}`)).body;
+    expect(mainnet).toContain('on the Solana network.');
+    expect(mainnet).not.toMatch(/network\)? network/);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+
+    await start({ config: { cluster: 'devnet' } });
+    const devnetId = await createInvoiceViaForm(await login());
+    const devnet = (await call(`/pay/${devnetId}`)).body;
+    expect(devnet).toContain('on the Solana devnet test network.');
+    expect(devnet).not.toMatch(/network\)? network/);
+  });
+
   it('uses a __Host- Secure cookie and HSTS when served over https', async () => {
     await start({ config: { baseUrl: 'https://pay.example.com' } });
     const response = await form(
