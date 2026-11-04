@@ -286,6 +286,27 @@ describe('web app', () => {
       expect(detail.body).toContain('2026-11-20');
     });
 
+    it('refreshes the owner page by itself until the invoice is paid', async () => {
+      const cookie = await login();
+      const id = await createInvoiceViaForm(cookie);
+      const open = await call(`/admin/invoices/${id}`, { headers: { cookie } });
+      expect(open.body).toContain(`id="pay-root" data-status-url="/api/pay/${id}/status"`);
+      expect(open.body).toContain('This page updates by itself');
+
+      const invoice = store.get(id)!;
+      store.settle(
+        recordPayment(invoice, {
+          signature: 'sig123',
+          amount: invoice.amount,
+          receivedAt: NOW + 1000,
+        }),
+      );
+      const paid = await call(`/admin/invoices/${id}`, { headers: { cookie } });
+      expect(paid.body).toContain('Payment received');
+      expect(paid.body).not.toContain('data-status-url');
+      expect(paid.body).not.toContain('This page updates by itself');
+    });
+
     it('lists invoices on the dashboard', async () => {
       const cookie = await login();
       await createInvoiceViaForm(cookie, { client_name: 'First client' });
@@ -380,6 +401,16 @@ describe('web app', () => {
         `solana:${RECIPIENT}?amount=1250.5&spl-token=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`,
       );
       expect(link).toContain(`reference=${reference}`);
+    });
+
+    it('says that a payment typed in by hand is not recognised, and how to open the wallet', async () => {
+      // The source wraps long sentences, so compare with whitespace collapsed.
+      const text = (await call(`/pay/${id}`)).body.replace(/\s+/g, ' ');
+      expect(text).toContain('Recipient address');
+      expect(text).toContain('typed in by hand');
+      expect(text).toContain('does not mark this invoice as paid');
+      expect(text).toContain('If your wallet says the address is not valid');
+      expect(text).not.toContain('Pay to');
     });
 
     it('does not expose owner pages or other invoices through it', async () => {
