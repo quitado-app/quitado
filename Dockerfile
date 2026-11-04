@@ -41,9 +41,10 @@ RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund --workspace=packages
 COPY --from=build /app/packages/core/dist packages/core/dist
 COPY --from=build /app/packages/server/dist packages/server/dist
 
-# The database lives in a volume so it survives container upgrades.
+# The database lives in /data, which must be a volume so it survives container upgrades: the
+# compose file mounts one, Railway attaches its own. There is no VOLUME instruction on purpose,
+# Railway rejects Dockerfiles that have one.
 RUN mkdir -p /data && chown node:node /data
-VOLUME ["/data"]
 # The port is not set here: the app uses QUITADO_PORT, then PORT (set by hosting platforms), then 3000.
 ENV QUITADO_DB_PATH=/data/quitado.db \
     QUITADO_HOST=0.0.0.0
