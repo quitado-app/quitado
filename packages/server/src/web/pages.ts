@@ -1,19 +1,29 @@
 import { isOverdue, type Asset, type Cluster, type Invoice } from '@quitado/core';
 import { displayAmount, explorerTxUrl, formatDate, shorten } from './format.ts';
 import { html, raw, type Raw } from './html.ts';
+import { t, type Lang, type MessageKey } from './i18n.ts';
 import type { InvoiceStats } from '../storage/stats.ts';
 
 export interface PageContext {
   cluster: Cluster;
   utcOffsetMinutes: number;
   now: number;
+  /** Language of the public pages. The owner pages are still English only. */
+  lang: Lang;
 }
 
-function layout(options: { title: string; body: Raw; cluster: Cluster; admin?: boolean }): string {
+function layout(options: {
+  title: string;
+  body: Raw;
+  cluster: Cluster;
+  admin?: boolean;
+  lang?: Lang;
+  /** Replaces the owner navigation, for pages that offer a language switch instead. */
+  switcher?: Raw;
+}): string {
+  const lang = options.lang ?? 'en';
   const banner =
-    options.cluster === 'devnet'
-      ? html`<div class="banner">Test network (devnet): no real money is involved.</div>`
-      : '';
+    options.cluster === 'devnet' ? html`<div class="banner">${t(lang, 'devnetBanner')}</div>` : '';
   const nav = options.admin
     ? html`<nav>
         <a href="/admin">Invoices</a>
@@ -25,7 +35,7 @@ function layout(options: { title: string; body: Raw; cluster: Cluster; admin?: b
       </nav>`
     : '';
   return html`<!doctype html>
-    <html lang="en">
+    <html lang="${lang}">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -38,25 +48,27 @@ function layout(options: { title: string; body: Raw; cluster: Cluster; admin?: b
         <div class="wrap">
           <header class="top">
             <span class="brand">Quitado</span>
-            ${nav}
+            ${nav} ${options.switcher ?? ''}
           </header>
           ${banner} ${options.body}
-          <footer>Open-source, non-custodial invoicing on Solana.</footer>
+          <footer>${t(lang, 'siteFooter')}</footer>
         </div>
         <script src="/static/app.js" defer></script>
       </body>
     </html>`.value;
 }
 
-function statusChip(invoice: Invoice, now: number): Raw {
-  if (invoice.status === 'paid') return html`<span class="chip chip-paid">Paid</span>`;
+function statusChip(invoice: Invoice, now: number, lang: Lang = 'en'): Raw {
+  if (invoice.status === 'paid') {
+    return html`<span class="chip chip-paid">${t(lang, 'statusPaid')}</span>`;
+  }
   return isOverdue(invoice, now)
-    ? html`<span class="chip chip-overdue">Past due</span>`
-    : html`<span class="chip chip-open">Open</span>`;
+    ? html`<span class="chip chip-overdue">${t(lang, 'statusOverdue')}</span>`
+    : html`<span class="chip chip-open">${t(lang, 'statusOpen')}</span>`;
 }
 
-const amountOf = (invoice: Invoice) =>
-  `${displayAmount(invoice.amount, invoice.asset.decimals)} ${invoice.asset.symbol}`;
+const amountOf = (invoice: Invoice, lang: Lang = 'en') =>
+  `${displayAmount(invoice.amount, invoice.asset.decimals, lang)} ${invoice.asset.symbol}`;
 
 export function loginPage(ctx: PageContext, error?: string): string {
   return layout({
@@ -264,7 +276,8 @@ export function invoiceDetailPage(ctx: PageContext, invoice: Invoice, payUrl: st
 
 export interface PayPageData {
   invoice: Invoice;
-  ownerName: string | undefined;
+  /** Who is asking for the money: the configured owner name, or this site's own host name. */
+  issuer: string;
   recipient: string;
   /** solana: URL for the QR code and the "open in wallet" button. */
   paymentUrl: string;
@@ -272,79 +285,141 @@ export interface PayPageData {
   statusUrl: string;
 }
 
+/** Language switch for the public pages. Plain links, so it works without JavaScript or cookies. */
+function languageSwitch(lang: Lang): Raw {
+  const link = (target: Lang, label: string) =>
+    html`<a
+      href="?lang=${target}"
+      lang="${target}"
+      hreflang="${target}"
+      ${target === lang ? raw('aria-current="true"') : ''}
+      >${label}</a
+    >`;
+  return html`<nav class="lang" aria-label="${t(lang, 'languageLabel')}">
+    ${link('en', 'English')} ${link('pt-BR', 'Português')}
+  </nav>`;
+}
+
 export function payPage(ctx: PageContext, data: PayPageData): string {
-  const { invoice } = data;
+  const { invoice, issuer } = data;
   const payment = invoice.payment;
-  const network = ctx.cluster === 'devnet' ? 'Solana devnet (test network)' : 'Solana';
-  const onNetwork =
-    ctx.cluster === 'devnet' ? 'the Solana devnet test network' : 'the Solana network';
+  const lang = ctx.lang;
+  const m = (key: MessageKey, params?: Record<string, string>) => t(lang, key, params);
+  const amount = amountOf(invoice, lang);
+  const devnet = ctx.cluster === 'devnet';
+  const token = invoice.asset.symbol;
 
   const details = html`<div class="row">
-      <div><span class="label">Billed to</span>${invoice.clientName}</div>
-      ${data.ownerName ? html`<div><span class="label">From</span>${data.ownerName}</div>` : ''}
-      <div><span class="label">Due</span>${formatDate(invoice.dueAt, ctx.utcOffsetMinutes)}</div>
+      <div><span class="label">${m('from')}</span>${issuer}</div>
+      <div><span class="label">${m('billedTo')}</span>${invoice.clientName}</div>
+      <div>
+        <span class="label">${m('due')}</span
+        >${formatDate(invoice.dueAt, ctx.utcOffsetMinutes, lang)}
+      </div>
     </div>
     <p>${invoice.description}</p>`;
 
   const body = payment
     ? html`<div class="card" id="pay-root">
-        <h1>Invoice paid</h1>
-        <div class="amount">${amountOf(invoice)}</div>
-        <p><span class="chip chip-paid">Paid</span></p>
-        ${details}
-        <p>
-          Payment received ${formatDate(payment.receivedAt, ctx.utcOffsetMinutes)}.
-          <a href="${explorerTxUrl(payment.signature, ctx.cluster)}" rel="noopener noreferrer"
-            >View the transaction</a
-          >
-        </p>
-        <p><a class="button" href="/pay/${invoice.id}/receipt.pdf">Download receipt (PDF)</a></p>
-      </div>`
-    : html`<div class="card" id="pay-root" data-status-url="${data.statusUrl}">
-          <h1>Invoice</h1>
-          <div class="amount">${amountOf(invoice)}</div>
-          <p>${statusChip(invoice, ctx.now)}</p>
+          <h1>${m('invoicePaid')}</h1>
+          <div class="amount">${amount}</div>
+          <p>${statusChip(invoice, ctx.now, lang)}</p>
           ${details}
-        </div>
-        <div class="card center">
-          <h2>Pay with a Solana wallet</h2>
-          <p class="muted">Scan the code with your wallet app, or open it directly.</p>
-          <div class="qr" role="img" aria-label="Payment QR code">${raw(data.qrSvg)}</div>
-          <p><a class="button" href="${data.paymentUrl}">Open in wallet</a></p>
-          <p class="muted">
-            If your wallet says the address is not valid, open this page on your phone and tap Open
-            in wallet instead.
+          <p>
+            ${m('paymentReceived', { date: formatDate(payment.receivedAt, ctx.utcOffsetMinutes, lang) })}
+            <a href="${explorerTxUrl(payment.signature, ctx.cluster)}" rel="noopener noreferrer"
+              >${m('viewTransaction')}</a
+            >
           </p>
-          <p class="muted">
-            This page updates by itself when the payment is detected, usually within a minute.
-          </p>
+          <p><a class="button" href="/pay/${invoice.id}/receipt.pdf">${m('downloadReceipt')}</a></p>
         </div>
         <div class="card">
-          <h2>Payment details</h2>
+          <h2>${m('verifyHeading')}</h2>
           <div class="row">
-            <div><span class="label">Network</span>${network}</div>
-            <div><span class="label">Token</span>${invoice.asset.symbol}</div>
             <div>
-              <span class="label">Amount</span
-              >${displayAmount(invoice.amount, invoice.asset.decimals)}
+              <span class="label">${m('network')}</span
+              >${devnet ? m('networkDevnet') : m('networkMain')}
+            </div>
+            <div><span class="label">${m('token')}</span>${token}</div>
+          </div>
+          <span class="label">${m('recipient')}</span>
+          <p class="mono">${data.recipient}</p>
+          <span class="label">${m('tokenAddress')}</span>
+          <p class="mono">${invoice.asset.mint}</p>
+          <span class="label">${m('transaction')}</span>
+          <p class="mono">${payment.signature}</p>
+          <p class="muted">${m('verifyNote')}</p>
+        </div>`
+    : html`<div
+          class="card"
+          id="pay-root"
+          data-status-url="${data.statusUrl}"
+          data-paid-text="${m('detected')}"
+        >
+          <h1>${m('invoiceFrom', { issuer })}</h1>
+          <div class="amount">${amount}</div>
+          <p>${statusChip(invoice, ctx.now, lang)}</p>
+          ${
+            isOverdue(invoice, ctx.now)
+              ? html`<p class="muted">
+                  ${m('pastDueNote', { date: formatDate(invoice.dueAt, ctx.utcOffsetMinutes, lang) })}
+                </p>`
+              : ''
+          }
+          ${details}
+        </div>
+        <div class="card">
+          <h2>${m('payHeading')}</h2>
+          <p><a class="button button-block" href="${data.paymentUrl}">${m('openInWallet')}</a></p>
+          <p class="muted">${m('payNote')}</p>
+          <p class="status" id="pay-status" role="status" aria-live="polite">${m('waiting')}</p>
+          <details class="more" id="qr-details" open>
+            <summary>${m('qrSummary')}</summary>
+            <div class="qr" role="img" aria-label="${m('qrLabel')}">${raw(data.qrSvg)}</div>
+            <p class="muted">${m('qrHint')}</p>
+          </details>
+          <details class="more">
+            <summary>${m('newTo', { token })}</summary>
+            <ol>
+              <li>${m('newStep1', { token })}</li>
+              <li>${m('newStep2')}</li>
+              <li>${m('newStep3')}</li>
+            </ol>
+          </details>
+        </div>
+        <div class="card">
+          <h2>${m('detailsHeading')}</h2>
+          <div class="row">
+            <div>
+              <span class="label">${m('network')}</span
+              >${devnet ? m('networkDevnet') : m('networkMain')}
+            </div>
+            <div><span class="label">${m('token')}</span>${token}</div>
+            <div>
+              <span class="label">${m('amount')}</span
+              >${displayAmount(invoice.amount, invoice.asset.decimals, lang)}
             </div>
           </div>
-          <span class="label">Recipient address</span>
+          <span class="label">${m('recipient')}</span>
           <div class="copy-row">
             <span class="mono">${data.recipient}</span>
-            <button class="secondary" type="button" data-copy="${data.recipient}">Copy</button>
+            <button
+              class="secondary"
+              type="button"
+              data-copy="${data.recipient}"
+              data-copied="${m('copied')}"
+            >
+              ${m('copy')}
+            </button>
           </div>
-          <p class="muted">
-            The invoice is for ${amountOf(invoice)} on ${onNetwork}. Pay with the code or the Open
-            in wallet button: they carry a reference that lets this page recognise your payment. A
-            payment typed in by hand to this address reaches the recipient but does not mark this
-            invoice as paid, and neither does a payment in another token or on another network.
-          </p>
+          <p class="muted">${m(devnet ? 'detailsNoteDevnet' : 'detailsNoteMain', { amount })}</p>
         </div>`;
 
   return layout({
-    title: `Invoice ${amountOf(invoice)} · Quitado`,
+    title: `${m('pageTitle', { amount, issuer })} · Quitado`,
     cluster: ctx.cluster,
+    lang,
+    switcher: languageSwitch(lang),
     body,
   });
 }
