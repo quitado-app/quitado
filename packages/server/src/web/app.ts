@@ -441,9 +441,11 @@ export function createWebServer(deps: AppDeps): Server {
           cluster: config.cluster,
           utcOffsetMinutes: config.utcOffsetMinutes,
           generatedAt: ctx.now,
+          lang: publicLang(ctx),
         });
         send(ctx, 200, pdf, 'application/pdf', {
           'Content-Disposition': `inline; filename="receipt-${invoice.id}.pdf"`,
+          Vary: 'Accept-Language',
         });
       },
     },

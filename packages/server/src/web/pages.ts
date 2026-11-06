@@ -331,7 +331,11 @@ export function payPage(ctx: PageContext, data: PayPageData): string {
               >${m('viewTransaction')}</a
             >
           </p>
-          <p><a class="button" href="/pay/${invoice.id}/receipt.pdf">${m('downloadReceipt')}</a></p>
+          <p>
+            <a class="button" href="/pay/${invoice.id}/receipt.pdf?lang=${lang}"
+              >${m('downloadReceipt')}</a
+            >
+          </p>
         </div>
         <div class="card">
           <h2>${m('verifyHeading')}</h2>

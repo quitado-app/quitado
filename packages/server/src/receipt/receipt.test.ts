@@ -94,6 +94,39 @@ describe('buildReceiptPdf', () => {
     expect(joined).toContain('not a tax document');
   });
 
+  it('is written in Portuguese on request, with Brazilian number and date formats', () => {
+    const { joined, strings } = readPdf(buildReceiptPdf(data(paidInvoice(), { lang: 'pt-BR' })));
+    expect(strings).toContain('Recibo de pagamento');
+    expect(strings).toContain('PAGO');
+    expect(strings).toContain('1.250,50 USDC');
+    expect(joined).toContain('COBRADO DE');
+    expect(joined).toContain('DESCRIÇÃO'); // accented capitals survive the WinAnsi encoding
+    expect(joined).toContain('02/11/2026'); // invoice date
+    expect(joined).toContain('16/11/2026'); // due date
+    expect(joined).toContain('03/11/2026 12:00 (UTC-03:00)');
+    expect(joined).toContain('Fatura T63cxeXPb7SVn6rgaSGTjA');
+    expect(joined).toContain('Não é um documento fiscal');
+    expect(joined).not.toContain('Payment receipt');
+    expect(joined).not.toContain('not a tax document');
+  });
+
+  it('says what was invoiced when the payment was more, in either language', () => {
+    const invoice = paidInvoice({ paid: 1_300_000_000n });
+    expect(readPdf(buildReceiptPdf(data(invoice))).joined).toContain(
+      'Invoice amount: 1,250.50 USDC',
+    );
+    expect(readPdf(buildReceiptPdf(data(invoice, { lang: 'pt-BR' }))).joined).toContain(
+      'Valor da fatura: 1.250,50 USDC',
+    );
+  });
+
+  it('marks devnet receipts as test network payments in Portuguese too', () => {
+    const { joined } = readPdf(
+      buildReceiptPdf(data(paidInvoice(), { cluster: 'devnet', lang: 'pt-BR' })),
+    );
+    expect(joined).toContain('Solana devnet (rede de teste)');
+  });
+
   it('prints the whole transaction signature, even when it wraps', () => {
     const { strings } = readPdf(buildReceiptPdf(data(paidInvoice())));
     // The signature is drawn in several consecutive lines; read in order they spell it out.

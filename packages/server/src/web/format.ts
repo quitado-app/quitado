@@ -18,14 +18,21 @@ export function formatDate(ms: number, utcOffsetMinutes: number, lang: Lang = 'e
   return lang === 'pt-BR' ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : iso;
 }
 
-/** "2026-11-02 12:34 (UTC-03:00)": date and time in a fixed UTC offset, with the offset spelled out. */
-export function formatDateTime(ms: number, utcOffsetMinutes: number): string {
+/**
+ * "2026-11-02 12:34 (UTC-03:00)": date and time in a fixed UTC offset, with the offset spelled out
+ * ("02/11/2026 12:34 (UTC-03:00)" in Portuguese).
+ */
+export function formatDateTime(ms: number, utcOffsetMinutes: number, lang: Lang = 'en'): string {
   const iso = new Date(ms + utcOffsetMinutes * 60_000).toISOString();
   const sign = utcOffsetMinutes < 0 ? '-' : '+';
   const abs = Math.abs(utcOffsetMinutes);
   const hours = String(Math.floor(abs / 60)).padStart(2, '0');
   const minutes = String(abs % 60).padStart(2, '0');
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} (UTC${sign}${hours}:${minutes})`;
+  const date =
+    lang === 'pt-BR'
+      ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
+      : iso.slice(0, 10);
+  return `${date} ${iso.slice(11, 16)} (UTC${sign}${hours}:${minutes})`;
 }
 
 /**
