@@ -32,9 +32,23 @@ export interface Config {
    * otherwise anyone can spoof their IP and dodge the rate limits.
    */
   trustProxy: boolean;
+  /**
+   * Optional host name (no scheme, no port) that shows the project's home page at "/" instead of
+   * the owner's sign-in. Every other path on that host is sent to baseUrl. Left out on most
+   * instances: it is for a project or company site that shares this server.
+   */
+  siteHost: string | undefined;
 }
 
 const BASE58_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+function baseHostname(url: string): string | undefined {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return undefined;
+  }
+}
 const MIN_SECRET_LENGTH = 20;
 
 export function loadConfig(env: Record<string, string | undefined>): Config {
@@ -115,6 +129,18 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     problems.push('QUITADO_OWNER_NAME must have at most 100 characters');
   }
 
+  const siteHostRaw = get('QUITADO_SITE_HOST')?.toLowerCase();
+  let siteHost: string | undefined;
+  if (siteHostRaw !== undefined) {
+    if (!/^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$/.test(siteHostRaw)) {
+      problems.push('QUITADO_SITE_HOST must be a host name only, e.g. example.com (no https://)');
+    } else if (siteHostRaw === baseHostname(baseUrl)) {
+      problems.push('QUITADO_SITE_HOST must differ from the host of QUITADO_BASE_URL');
+    } else {
+      siteHost = siteHostRaw;
+    }
+  }
+
   let customAssets: Asset[] | undefined;
   const assetsRaw = get('QUITADO_ASSETS');
   if (assetsRaw !== undefined) {
@@ -172,6 +198,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     commitment,
     utcOffsetMinutes,
     trustProxy: trustProxyRaw === 'true',
+    siteHost,
   };
 }
 

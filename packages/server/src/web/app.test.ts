@@ -181,6 +181,118 @@ describe('web app', () => {
     });
   });
 
+  describe('home page on the site host', () => {
+    const SITE = 'quitado.example';
+    const onSite = (headers: Record<string, string> = {}) => ({
+      headers: { host: SITE, ...headers },
+    });
+    beforeEach(() => start({ config: { siteHost: SITE, baseUrl: 'https://pay.example.com' } }));
+
+    it('shows the project page at the root of the site host, in English by default', async () => {
+      const page = await call('/', onSite());
+      expect(page.status).toBe(200);
+      expect(page.headers['content-type']).toContain('text/html');
+      expect(page.headers.vary).toBe('Accept-Language');
+      expect(page.body).toContain('<html lang="en">');
+      expect(page.body).toContain('<h1 id="hero-title">Bill in USDC or USDT.');
+      expect(page.body).toContain('Quitado never holds your money or your keys');
+      expect(page.body).toContain('charges no fee');
+      expect(page.body).toContain('Apache-2.0');
+      // Search engines may index it, and it points at its own address.
+      expect(page.body).toContain('content="index, follow"');
+      expect(page.body).toContain('<link rel="canonical" href="https://quitado.example/?lang=en"');
+    });
+
+    it('follows ?lang= first, then the browser language', async () => {
+      const byBrowser = await call('/', onSite({ 'accept-language': 'pt-BR,pt;q=0.9' }));
+      expect(byBrowser.body).toContain('<html lang="pt-BR">');
+      expect(byBrowser.body).toContain('Cobre em USDC ou USDT.');
+      const byQuery = await call('/?lang=en', onSite({ 'accept-language': 'pt-BR' }));
+      expect(byQuery.body).toContain('<html lang="en">');
+      expect(byQuery.body).toContain('aria-current="true"');
+    });
+
+    it('says the same things in both languages, and says what is not built', async () => {
+      const [en, pt] = await Promise.all([
+        call('/?lang=en', onSite()),
+        call('/?lang=pt-BR', onSite()),
+      ]);
+      for (const tag of ['<li', '<details', '<h2', '<h3', '<dt', 'href="https://']) {
+        expect(en.body.split(tag).length, tag).toBe(pt.body.split(tag).length);
+      }
+      expect(en.body).toContain('planned and do not exist yet');
+      expect(pt.body).toContain('estão planejados e ainda não existem');
+      expect(pt.body).toContain('Ele não é nota fiscal'); // the receipt is not a tax document
+      // No customers, numbers or testimonials exist, so none may appear.
+      expect(en.body).not.toMatch(/testimonial|trusted by|customers? (love|trust)/i);
+    });
+
+    it('labels the example invoice as an example and dates it from the clock', async () => {
+      const en = await call('/?lang=en', onSite());
+      expect(en.body).toContain('Illustrative example, not a real charge');
+      expect(en.body).toContain('1,250.00 USDC');
+      expect(en.body).toContain('2026-11-16'); // two weeks after NOW, in UTC-3
+      const pt = await call('/?lang=pt-BR', onSite());
+      expect(pt.body).toContain('Exemplo ilustrativo, não é uma cobrança real');
+      expect(pt.body).toContain('1.250,00 USDC');
+      expect(pt.body).toContain('16/11/2026');
+    });
+
+    it('works under the strict content policy: no inline script, no inline style, no outside files', async () => {
+      const { body, headers } = await call('/', onSite());
+      expect(headers['content-security-policy']).toContain("style-src 'self'");
+      expect(body).not.toMatch(/<script(?![^>]*\bsrc=)/);
+      expect(body).not.toMatch(/\sstyle=/);
+      expect(body).not.toMatch(/<style\b/);
+      expect(body).not.toMatch(/(?:src|href)="\/\//);
+      expect(body).toContain('href="/static/landing.css"');
+    });
+
+    it('serves its stylesheet, and the stylesheet needs no outside resources', async () => {
+      const css = await call('/static/landing.css', onSite());
+      expect(css.status).toBe(200);
+      expect(css.headers['content-type']).toContain('text/css');
+      expect(css.body).not.toMatch(/url\(|@import|https?:\/\//);
+    });
+
+    it('sends everything else on the site host to the instance address', async () => {
+      const admin = await call('/admin', onSite());
+      expect(admin.status).toBe(303);
+      expect(admin.headers.location).toBe('https://pay.example.com/admin');
+      const pay = await call('/pay/abcdefghijklmnopqrstuv?lang=pt-BR', onSite());
+      expect(pay.headers.location).toBe(
+        'https://pay.example.com/pay/abcdefghijklmnopqrstuv?lang=pt-BR',
+      );
+      expect((await call('/healthz', onSite())).status).toBe(200);
+    });
+
+    it('leaves the instance address alone: its root still goes to the sign-in', async () => {
+      const root = await call('/', { headers: { host: 'pay.example.com' } });
+      expect(root.status).toBe(303);
+      expect(root.headers.location).toBe('/admin');
+      // Nor does a port in the Host header change which site is meant.
+      const withPort = await call('/', onSite({ host: `${SITE}:443` }));
+      expect(withPort.status).toBe(200);
+    });
+
+    it('allows search engines on the site host only', async () => {
+      expect((await call('/robots.txt', onSite())).body).toContain('Allow: /');
+      expect((await call('/robots.txt', { headers: { host: 'pay.example.com' } })).body).toContain(
+        'Disallow: /',
+      );
+    });
+  });
+
+  describe('home page when no site host is set', () => {
+    beforeEach(() => start());
+
+    it('keeps the root redirect for every host name', async () => {
+      const root = await call('/', { headers: { host: 'quitado.finance' } });
+      expect(root.status).toBe(303);
+      expect(root.headers.location).toBe('/admin');
+    });
+  });
+
   describe('sign in', () => {
     beforeEach(() => start());
 

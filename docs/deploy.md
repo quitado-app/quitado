@@ -38,7 +38,12 @@ documentation (November 2026):
    TXT record that proves you own the domain; the domain will not verify with only one of them. For
    the root of a domain (no `www.` or other prefix) Railway supports ALIAS and CNAME flattening, so
    use an ALIAS record if your DNS provider has no CNAME at the root.
-6. **One replica only.** The database is a SQLite file on a volume, so do not scale the service to
+6. **A home page on another host name (optional).** To serve the project's home page from the same
+   service, add a second custom domain (for example the bare `quitado.finance`, next to
+   `pay.quitado.finance`) and set `QUITADO_SITE_HOST=quitado.finance`. That host shows the home page at
+   `/` and sends every other path to `QUITADO_BASE_URL`, so the sign-in and the payment pages stay on
+   the instance's own address. Leave the variable out and `/` goes to the sign-in as before.
+7. **One replica only.** The database is a SQLite file on a volume, so do not scale the service to
    more than one instance.
 
 There is no `railway.toml` in the repository on purpose: Railway has deprecated config-as-code

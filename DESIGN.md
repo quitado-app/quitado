@@ -201,7 +201,7 @@ The layout is mobile-first by construction: there are no fixed widths other than
 
 ## Elevation & Depth
 
-None. The system is flat by design: depth comes from tone (a white card on a grey canvas, a recessed canvas-colored field inside a card) and a 1px hairline border. There are no shadows, blurs or overlays, and no motion beyond the browser default. State changes are shown by content and color, not by animation.
+None. The system is flat by design: depth comes from tone (a white card on a grey canvas, a recessed canvas-colored field inside a card) and a 1px hairline border. There are no shadows, blurs or overlays, and no motion beyond the browser default, except the scroll-driven settling of the example invoice on the home page (see Landing page). State changes are shown by content and color, not by animation.
 
 ### Named Rules
 
@@ -251,6 +251,16 @@ The QR code in a 240px white tile, centered, 12px radius, 12px padding, with the
 ### Tables
 
 Full width, hairline row dividers, muted uppercase headers, 10px by 8px cell padding, numeric columns right-aligned and non-wrapping.
+
+## Landing page (site scale)
+
+The project's home page (`web/landing.ts`, `web/landing-assets.ts`, served as `/static/landing.css` on top of `app.css`) lives in the same world and adds only what a page for strangers needs. It is the one place the system is scaled up; the app and the payment page are unchanged.
+
+- **Scale.** Headline fluid from 2.1rem to 3.6rem, section titles 1.55rem to 2.2rem, body 1.0625rem, lead text 1.25rem, in a 1120px shell. On this page the headline is the loudest text; the **Amount First Rule** still governs the example invoice and every payment surface.
+- **One authored moment.** The example invoice is sticky beside the steps and settles from open (amber chip) to paid (green chip) as each step passes the middle of the screen, with its four events lighting in turn. It is CSS only: named view timelines on the steps, a registered `--lit` number (`@property`) animated from 0 to 1, and `color-mix()` to turn it into colour. It runs only from 900px wide and for visitors who have not asked for reduced motion; everywhere else the card stays in its open state and the steps carry the story.
+- **Other CSS the page uses.** Container queries on the example card, `text-wrap: balance` and `pretty`, `:focus-visible` rings in the action colour, themed `::selection`, scrollbar, caret and accent, `details` that animate open where `interpolate-size` exists, a cross-fade between languages with `@view-transition`, and `forced-colors`, `prefers-contrast`, `prefers-reduced-motion` and print rules. No JavaScript is added besides the copy button already in `app.js`.
+- **Still true.** Flat surfaces with hairlines, system fonts, no gradients or shadows, status colours only for status, every file from the same origin.
+- **Illustrative data.** The invoice and receipt on the page are labelled as examples and use made-up names; nothing on the page is a customer, a number or a testimonial.
 
 ## Do's and Don'ts
 

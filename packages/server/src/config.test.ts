@@ -186,6 +186,34 @@ describe('loadConfig', () => {
     });
   });
 
+  describe('site host', () => {
+    it('is off by default and read in lowercase when set', () => {
+      expect(loadConfig(base).siteHost).toBeUndefined();
+      expect(loadConfig({ ...base, QUITADO_SITE_HOST: 'Quitado.Finance' }).siteHost).toBe(
+        'quitado.finance',
+      );
+    });
+
+    it.each(['https://quitado.finance', 'quitado.finance:3000', 'quitado.finance/', 'a b'])(
+      'rejects %s: it must be a host name only',
+      (value) => {
+        expect(() => loadConfig({ ...base, QUITADO_SITE_HOST: value })).toThrow(
+          /QUITADO_SITE_HOST must be a host name only/,
+        );
+      },
+    );
+
+    it('cannot be the same host as the instance, which would hide its sign-in', () => {
+      expect(() =>
+        loadConfig({
+          ...base,
+          QUITADO_BASE_URL: 'https://pay.example.com',
+          QUITADO_SITE_HOST: 'pay.example.com',
+        }),
+      ).toThrow(/must differ/);
+    });
+  });
+
   it('refuses custom assets on mainnet, where phishing mints would be a risk', () => {
     expect(() => loadConfig({ ...base, QUITADO_ASSETS: `TEST:${MINT}:6` })).toThrow(
       /only allowed on devnet/,

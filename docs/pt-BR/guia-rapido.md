@@ -71,9 +71,11 @@ O programa avisa, ao iniciar, se algo importante estiver faltando (por exemplo, 
 
 ### 5. O que o cliente vê
 
-O cliente abre o link (a página está em **inglês**, pensando em clientes do exterior) e paga de duas
-formas: escaneando o QR code com a carteira do celular, ou tocando em **Open in wallet**. A página
-atualiza sozinha quando o pagamento é detectado, em geral entre 15 e 40 segundos.
+O cliente abre o link e vê a página em **português ou inglês**, conforme o idioma do navegador dele
+(ele pode trocar no topo da página, ou você pode mandar o link com `?lang=en` ou `?lang=pt-BR` no
+final). Ele paga de duas formas: escaneando o QR code com a carteira do celular, ou tocando em
+**Abrir na carteira**. A página atualiza sozinha quando o pagamento é detectado, em geral entre 15 e
+40 segundos.
 
 Depois que a fatura está paga, o cliente pode baixar um **recibo em PDF**, com a assinatura da
 transação e um link para conferi-la. O recibo **não é nota fiscal**.
