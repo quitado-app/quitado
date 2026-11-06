@@ -43,6 +43,21 @@ describe('format', () => {
     expect(displayAmount(5n, 0)).toBe('5.00');
   });
 
+  it('displays amounts the Brazilian way in Portuguese', () => {
+    expect(displayAmount(1_250_500_000n, 6, 'pt-BR')).toBe('1.250,50');
+    expect(displayAmount(12_500_000n, 6, 'pt-BR')).toBe('12,50');
+    expect(displayAmount(1n, 6, 'pt-BR')).toBe('0,000001');
+    expect(displayAmount(999_999_999_999_999n, 6, 'pt-BR')).toBe('999.999.999,999999');
+    expect(displayAmount(1_250_500_000n, 6, 'en')).toBe('1,250.50');
+  });
+
+  it('formats dates day first in Portuguese', () => {
+    const ms = Date.UTC(2026, 10, 3, 1, 30);
+    expect(formatDate(ms, -180, 'pt-BR')).toBe('02/11/2026');
+    expect(formatDate(ms, 0, 'pt-BR')).toBe('03/11/2026');
+    expect(formatDate(ms, 0, 'en')).toBe('2026-11-03');
+  });
+
   it('formats dates in the instance UTC offset', () => {
     const ms = Date.UTC(2026, 10, 3, 1, 30); // 01:30 UTC on 3 Nov
     expect(formatDate(ms, 0)).toBe('2026-11-03');

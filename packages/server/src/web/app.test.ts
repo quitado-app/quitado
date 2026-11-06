@@ -413,6 +413,92 @@ describe('web app', () => {
       expect(text).not.toContain('Pay to');
     });
 
+    describe('language', () => {
+      const portuguese = { 'accept-language': 'pt-BR,pt;q=0.9,en;q=0.8' };
+      const collapse = (text: string) => text.replace(/\s+/g, ' ');
+
+      it('is English when the browser says nothing', async () => {
+        const page = await call(`/pay/${id}`);
+        expect(page.body).toContain('<html lang="en">');
+        expect(page.body).toContain('Open in wallet');
+        expect(page.body).toContain('1,250.50 USDC');
+        expect(page.body).toContain('2026-11-20');
+        expect(page.headers.vary).toContain('Accept-Language');
+      });
+
+      it('follows the browser language, with Brazilian number and date formats', async () => {
+        const page = await call(`/pay/${id}`, { headers: portuguese });
+        expect(page.body).toContain('<html lang="pt-BR">');
+        expect(page.body).toContain('Abrir na carteira');
+        expect(page.body).toContain('Fatura de Davi Freelancer');
+        expect(page.body).toContain('1.250,50 USDC');
+        expect(page.body).toContain('20/11/2026');
+        expect(page.body).toContain('Em aberto');
+        expect(page.body).not.toContain('Open in wallet');
+      });
+
+      it('lets ?lang= win over the browser, and ignores a language it does not have', async () => {
+        const english = await call(`/pay/${id}?lang=en`, { headers: portuguese });
+        expect(english.body).toContain('Open in wallet');
+        expect(english.body).not.toContain('Abrir na carteira');
+        expect((await call(`/pay/${id}?lang=pt`)).body).toContain('Abrir na carteira');
+        expect((await call(`/pay/${id}?lang=fr`)).body).toContain('Open in wallet');
+        expect((await call(`/pay/${id}?lang=fr`, { headers: portuguese })).body).toContain(
+          'Abrir na carteira',
+        );
+      });
+
+      it('offers a switch that marks the current language', async () => {
+        const english = collapse((await call(`/pay/${id}`)).body);
+        expect(english).toContain('href="?lang=pt-BR"');
+        expect(english).toMatch(/aria-current="true" >English/);
+        expect(english).not.toMatch(/aria-current="true" >Português/);
+        const portugueseBody = collapse((await call(`/pay/${id}`, { headers: portuguese })).body);
+        expect(portugueseBody).toMatch(/aria-current="true" >Português/);
+        expect(portugueseBody).toContain('aria-label="Idioma"');
+      });
+
+      it('translates the overdue explanation, the waiting line and the copy confirmation', async () => {
+        now = Date.UTC(2026, 11, 1);
+        const english = collapse((await call(`/pay/${id}`)).body);
+        expect(english).toContain('This invoice was due on 2026-11-20. You can still pay it.');
+        const page = collapse((await call(`/pay/${id}`, { headers: portuguese })).body);
+        expect(page).toContain('Esta fatura venceu em 20/11/2026. Você ainda pode pagá-la.');
+        expect(page).toContain('Vencida');
+        expect(page).toContain('data-copied="Copiado"');
+        expect(page).toContain('role="status" aria-live="polite"');
+        expect(page).toContain('Aguardando o seu pagamento');
+        expect(page).toContain('data-paid-text="Pagamento recebido. Atualizando a página…"');
+      });
+
+      it('puts the button before the QR code, which is open when there is no JavaScript', async () => {
+        const body = (await call(`/pay/${id}`)).body;
+        expect(body.indexOf('Open in wallet')).toBeLessThan(body.indexOf('<svg'));
+        expect(body).toMatch(/id="qr-details"\s+open/);
+      });
+
+      it('shows what a payer can check on the paid page, in either language', async () => {
+        const invoice = store.get(id)!;
+        store.settle(
+          recordPayment(invoice, {
+            signature: 'sig123',
+            amount: invoice.amount,
+            receivedAt: NOW + 1000,
+          }),
+        );
+        const english = collapse((await call(`/pay/${id}`)).body);
+        expect(english).toContain('Verify this payment');
+        expect(english).toContain(RECIPIENT);
+        expect(english).toContain('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+        expect(english).toContain('sig123');
+        const page = collapse((await call(`/pay/${id}`, { headers: portuguese })).body);
+        expect(page).toContain('Fatura paga');
+        expect(page).toContain('Verificar este pagamento');
+        expect(page).toContain('Pagamento recebido em 02/11/2026');
+        expect(page).toContain('Baixar recibo (PDF)');
+      });
+    });
+
     it('does not expose owner pages or other invoices through it', async () => {
       const page = await call(`/pay/${id}`);
       expect(page.body).not.toContain('Sign out');
@@ -613,6 +699,14 @@ describe('web app', () => {
     const devnet = (await call(`/pay/${devnetId}`)).body;
     expect(devnet).toContain('on the Solana devnet test network.');
     expect(devnet).not.toMatch(/network\)? network/);
+  });
+
+  it('names who is asking for the money: the owner, or else the host the page is served from', async () => {
+    await start({ config: { ownerName: undefined } });
+    const id = await createInvoiceViaForm(await login());
+    const page = (await call(`/pay/${id}`)).body;
+    expect(page).toContain('Invoice from localhost:3000');
+    expect(page).not.toContain('Davi Freelancer');
   });
 
   it('uses a __Host- Secure cookie and HSTS when served over https', async () => {

@@ -22,6 +22,7 @@ import {
   readBody,
   serializeCookie,
 } from './http-utils.ts';
+import { pickLang, type Lang } from './i18n.ts';
 import { newInvoiceId, newReference } from './ids.ts';
 import {
   dashboardPage,
@@ -60,6 +61,7 @@ interface Context {
   request: IncomingMessage;
   response: ServerResponse;
   path: string;
+  query: URLSearchParams;
   ip: string;
   now: number;
 }
@@ -101,11 +103,21 @@ export function createWebServer(deps: AppDeps): Server {
     ...(https ? { 'Strict-Transport-Security': 'max-age=15552000' } : {}),
   };
 
-  const pageContext = (ctx: Context): PageContext => ({
+  const pageContext = (ctx: Context, lang: Lang = 'en'): PageContext => ({
     cluster: config.cluster,
     utcOffsetMinutes: config.utcOffsetMinutes,
     now: ctx.now,
+    lang,
   });
+
+  // Public pages follow ?lang=, then the browser's language. Owner pages stay English for now.
+  const publicLang = (ctx: Context): Lang => {
+    const header = ctx.request.headers['accept-language'];
+    return pickLang(ctx.query.get('lang'), Array.isArray(header) ? header[0] : header);
+  };
+
+  // Who is asking for the money: the owner's name, or else the host this instance is served from.
+  const issuer = config.ownerName ?? new URL(config.baseUrl).host;
 
   function send(
     ctx: Context,
@@ -353,14 +365,16 @@ export function createWebServer(deps: AppDeps): Server {
         send(
           ctx,
           200,
-          payPage(pageContext(ctx), {
+          payPage(pageContext(ctx, publicLang(ctx)), {
             invoice,
-            ownerName: config.ownerName,
+            issuer,
             recipient: config.recipient,
             paymentUrl,
             qrSvg: qrSvg(paymentUrl),
             statusUrl: `/api/pay/${invoice.id}/status`,
           }),
+          'text/html; charset=utf-8',
+          { Vary: 'Accept-Language' },
         );
       },
     },
@@ -424,12 +438,14 @@ export function createWebServer(deps: AppDeps): Server {
         request,
         response,
         path: '/',
+        query: new URLSearchParams(),
         ip: clientIp(request),
         now: clock(),
       };
       try {
         const url = new URL(request.url ?? '/', config.baseUrl);
         ctx.path = url.pathname;
+        ctx.query = url.searchParams;
         const method = request.method === 'HEAD' ? 'GET' : request.method;
 
         // Public pages are open to anyone, so they get a per-client limit.

@@ -96,6 +96,18 @@ td.nowrap { white-space: nowrap; }
 .copy-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .copy-row .mono { flex: 1 1 260px; }
 footer { margin-top: 32px; font-size: 0.85rem; color: var(--muted); text-align: center; }
+.lang { display: flex; gap: 4px; font-size: 0.85rem; }
+.lang a { display: inline-block; padding: 12px 8px; color: var(--accent); }
+.lang a[aria-current="true"] { color: var(--text); font-weight: 700; text-decoration: none; }
+.status { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; background: var(--bg); }
+details.more { border-top: 1px solid var(--line); margin-top: 12px; }
+details.more summary { cursor: pointer; font-weight: 600; padding: 12px 0; min-height: 44px; }
+details.more[open] summary { padding-bottom: 4px; }
+ol { padding-left: 22px; margin: 4px 0 12px; }
+li { margin: 4px 0; }
+@media (max-width: 640px) {
+  .button-block { display: block; width: 100%; text-align: center; padding: 14px 18px; }
+}
 `;
 
 export const APP_JS = `
@@ -109,23 +121,36 @@ export const APP_JS = `
     const original = target.textContent;
     try {
       await navigator.clipboard.writeText(target.getAttribute('data-copy') || '');
-      target.textContent = 'Copied';
+      target.textContent = target.getAttribute('data-copied') || 'Copied';
       setTimeout(() => { target.textContent = original; }, 1500);
     } catch (error) {
       // Clipboard not available (for example plain http): the text stays selectable.
     }
   });
 
+  // The QR code is for paying from another device. On a phone it starts closed, so the button that
+  // opens the wallet is what the payer sees first. Without JavaScript it stays open.
+  const qr = document.getElementById('qr-details');
+  if (qr && window.matchMedia && window.matchMedia('(max-width: 640px)').matches) {
+    qr.removeAttribute('open');
+  }
+
   // Payment page: poll the status and reload as soon as the invoice is paid.
   const root = document.getElementById('pay-root');
   const url = root && root.getAttribute('data-status-url');
   if (!url) return;
+  const statusLine = document.getElementById('pay-status');
   const poll = async () => {
     try {
       const response = await fetch(url, { cache: 'no-store', credentials: 'omit' });
       if (response.ok) {
         const data = await response.json();
-        if (data.paid) { location.reload(); return; }
+        if (data.paid) {
+          // Say so first, so a screen reader announces it, then show the paid page.
+          if (statusLine) statusLine.textContent = root.getAttribute('data-paid-text') || '';
+          setTimeout(() => location.reload(), 800);
+          return;
+        }
       }
     } catch (error) {
       // Offline or the server is restarting: try again.
