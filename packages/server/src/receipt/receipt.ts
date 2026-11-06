@@ -3,6 +3,7 @@
 import { correction, generate } from 'lean-qr';
 import type { Cluster, Invoice } from '@quitado/core';
 import { displayAmount, explorerTxUrl, formatDate, formatDateTime } from '../web/format.ts';
+import { t, type Lang, type MessageKey } from '../web/i18n.ts';
 import { ellipsize, PdfPage, renderPdf, textWidth, wrapText, type Font, type Rgb } from './pdf.ts';
 
 export interface ReceiptData {
@@ -15,6 +16,8 @@ export interface ReceiptData {
   utcOffsetMinutes: number;
   /** Unix ms; the moment the PDF is produced. */
   generatedAt: number;
+  /** Language of the text on the receipt. English when left out. */
+  lang?: Lang;
 }
 
 const WIDTH = 595;
@@ -57,11 +60,13 @@ export function buildReceiptPdf(data: ReceiptData): Buffer {
 
 function layout(data: ReceiptData, descriptionLines: number): Buffer {
   const { invoice, cluster, utcOffsetMinutes } = data;
+  const lang = data.lang ?? 'en';
+  const m = (key: MessageKey, params?: Record<string, string>) => t(lang, key, params);
   const payment = invoice.payment!;
   const decimals = invoice.asset.decimals;
   const symbol = invoice.asset.symbol;
   const explorerUrl = explorerTxUrl(payment.signature, cluster);
-  const network = cluster === 'devnet' ? 'Solana devnet (test network)' : 'Solana';
+  const network = cluster === 'devnet' ? m('networkDevnet') : m('networkMain');
 
   const page = new PdfPage(WIDTH, HEIGHT);
   /** Converts a distance from the top of the page into a PDF y coordinate. */
@@ -71,17 +76,18 @@ function layout(data: ReceiptData, descriptionLines: number): Buffer {
   // ---- Header ----------------------------------------------------------------------------------
   page.text('Quitado', MARGIN, y(top + 10), { font: 'bold', size: 12, color: MUTED });
   top += 44;
-  page.text('Payment receipt', MARGIN, y(top), { font: 'bold', size: 24, color: INK });
+  page.text(m('receiptTitle'), MARGIN, y(top), { font: 'bold', size: 24, color: INK });
   top += 14;
   page.line(MARGIN, y(top), WIDTH - MARGIN, y(top), { color: RULE });
   top += 30;
 
   // ---- Status and amount -----------------------------------------------------------------------
-  const badgeWidth = textWidth('PAID', 'bold', 10) + 20;
+  const badge = m('receiptPaid');
+  const badgeWidth = textWidth(badge, 'bold', 10) + 20;
   page.rect(MARGIN, y(top + 6), badgeWidth, 20, GREEN_BG);
-  page.text('PAID', MARGIN + 10, y(top), { font: 'bold', size: 10, color: GREEN });
+  page.text(badge, MARGIN + 10, y(top), { font: 'bold', size: 10, color: GREEN });
   top += 40;
-  page.text(`${displayAmount(payment.amount, decimals)} ${symbol}`, MARGIN, y(top), {
+  page.text(`${displayAmount(payment.amount, decimals, lang)} ${symbol}`, MARGIN, y(top), {
     font: 'bold',
     size: 28,
     color: INK,
@@ -89,7 +95,9 @@ function layout(data: ReceiptData, descriptionLines: number): Buffer {
   top += 22;
   if (payment.amount !== invoice.amount) {
     page.text(
-      `Invoice amount: ${displayAmount(invoice.amount, decimals)} ${symbol}`,
+      m('receiptInvoiceAmount', {
+        amount: `${displayAmount(invoice.amount, decimals, lang)} ${symbol}`,
+      }),
       MARGIN,
       y(top),
       { size: 10, color: MUTED },
@@ -118,23 +126,23 @@ function layout(data: ReceiptData, descriptionLines: number): Buffer {
     top += lines.length * leading + 9;
   };
 
-  if (data.ownerName) row('From', data.ownerName, { maxLines: NAME_LINES });
-  row('Received at', data.recipient, { font: 'mono', size: 8.5 });
-  row('Billed to', invoice.clientName, { maxLines: NAME_LINES });
-  row('Description', invoice.description, { maxLines: descriptionLines });
-  row('Invoice date', formatDate(invoice.createdAt, utcOffsetMinutes));
-  row('Due date', formatDate(invoice.dueAt, utcOffsetMinutes));
-  row('Payment received', formatDateTime(payment.receivedAt, utcOffsetMinutes));
-  if (payment.payer) row('Paid from', payment.payer, { font: 'mono', size: 8.5 });
-  row('Network', network);
-  row('Token', `${symbol}  (${invoice.asset.mint})`, { font: 'mono', size: 8.5 });
-  row('Transaction', payment.signature, { font: 'mono', size: 8.5 });
+  if (data.ownerName) row(m('receiptFrom'), data.ownerName, { maxLines: NAME_LINES });
+  row(m('receiptReceivedAt'), data.recipient, { font: 'mono', size: 8.5 });
+  row(m('receiptBilledTo'), invoice.clientName, { maxLines: NAME_LINES });
+  row(m('receiptDescription'), invoice.description, { maxLines: descriptionLines });
+  row(m('receiptInvoiceDate'), formatDate(invoice.createdAt, utcOffsetMinutes, lang));
+  row(m('receiptDueDate'), formatDate(invoice.dueAt, utcOffsetMinutes, lang));
+  row(m('receiptPaymentReceived'), formatDateTime(payment.receivedAt, utcOffsetMinutes, lang));
+  if (payment.payer) row(m('receiptPaidFrom'), payment.payer, { font: 'mono', size: 8.5 });
+  row(m('receiptNetwork'), network);
+  row(m('receiptToken'), `${symbol}  (${invoice.asset.mint})`, { font: 'mono', size: 8.5 });
+  row(m('receiptTransaction'), payment.signature, { font: 'mono', size: 8.5 });
 
   // ---- Verification: link and QR code --------------------------------------------------------
   top += 4;
   page.line(MARGIN, y(top), WIDTH - MARGIN, y(top), { color: RULE });
   top += 22;
-  page.text('Verify this payment on the blockchain', MARGIN, y(top), {
+  page.text(m('receiptVerifyHeading'), MARGIN, y(top), {
     font: 'bold',
     size: 11,
     color: INK,
@@ -148,7 +156,7 @@ function layout(data: ReceiptData, descriptionLines: number): Buffer {
   const textX = MARGIN + qrSize + 18;
   const textWidthAvailable = WIDTH - MARGIN - textX;
   let linkTop = qrTop + 8;
-  page.text('Scan the code or open this address in a browser:', textX, y(linkTop), {
+  page.text(m('receiptVerifyHint'), textX, y(linkTop), {
     size: 9.5,
     color: MUTED,
   });
@@ -165,22 +173,22 @@ function layout(data: ReceiptData, descriptionLines: number): Buffer {
   // ---- Footer ----------------------------------------------------------------------------------
   page.line(MARGIN, y(FOOTER_TOP), WIDTH - MARGIN, y(FOOTER_TOP), { color: RULE });
   let footer = FOOTER_TOP + 16;
-  const note =
-    'This receipt records a payment made on the Solana blockchain. It is not a tax document ' +
-    '(nota fiscal) and does not replace one.';
-  for (const line of wrapText(note, 'regular', 8, WIDTH - MARGIN * 2)) {
+  for (const line of wrapText(m('receiptNote'), 'regular', 8, WIDTH - MARGIN * 2)) {
     page.text(line, MARGIN, y(footer), { size: 8, color: MUTED });
     footer += 11;
   }
   page.text(
-    `Invoice ${invoice.id}  -  generated by Quitado on ${formatDateTime(data.generatedAt, utcOffsetMinutes)}`,
+    m('receiptFooter', {
+      id: invoice.id,
+      date: formatDateTime(data.generatedAt, utcOffsetMinutes, lang),
+    }),
     MARGIN,
     y(footer + 2),
     { size: 8, color: MUTED },
   );
 
   return renderPdf(page, {
-    title: `Payment receipt ${invoice.id}`,
+    title: m('receiptPdfTitle', { id: invoice.id }),
     created: new Date(data.generatedAt),
   });
 }

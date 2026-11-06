@@ -602,12 +602,32 @@ describe('web app', () => {
         expect(Number(response.headers['content-length'])).toBe(response.buffer.length);
       });
 
-      it('is linked from the customer page and from the owner page', async () => {
+      it('is linked from the customer page, in its language, and from the owner page', async () => {
         settle();
-        const link = `href="/pay/${id}/receipt.pdf"`;
-        expect((await call(`/pay/${id}`)).body).toContain(link);
+        const link = (query = '') => `href="/pay/${id}/receipt.pdf${query}"`;
+        expect((await call(`/pay/${id}`)).body).toContain(link('?lang=en'));
+        expect((await call(`/pay/${id}?lang=pt-BR`)).body).toContain(link('?lang=pt-BR'));
         const cookie = await login();
-        expect((await call(`/admin/invoices/${id}`, { headers: { cookie } })).body).toContain(link);
+        expect((await call(`/admin/invoices/${id}`, { headers: { cookie } })).body).toContain(
+          link(),
+        );
+      });
+
+      it('is written in the language asked for: ?lang=, else the browser, else English', async () => {
+        settle();
+        const title = async (path: string, headers: Record<string, string> = {}) => {
+          const response = await call(path, { headers });
+          expect(response.status).toBe(200);
+          expect(response.headers.vary).toContain('Accept-Language');
+          return /\/Title \(([^)]*)\)/.exec(response.buffer.toString('latin1'))![1];
+        };
+        const portuguese = { 'accept-language': 'pt-BR,pt;q=0.9' };
+        expect(await title(`/pay/${id}/receipt.pdf`)).toBe(`Payment receipt ${id}`);
+        expect(await title(`/pay/${id}/receipt.pdf?lang=pt-BR`)).toBe(`Recibo de pagamento ${id}`);
+        expect(await title(`/pay/${id}/receipt.pdf`, portuguese)).toBe(`Recibo de pagamento ${id}`);
+        expect(await title(`/pay/${id}/receipt.pdf?lang=en`, portuguese)).toBe(
+          `Payment receipt ${id}`,
+        );
       });
 
       it('answers 404 for unknown and malformed ids, and only to GET', async () => {
