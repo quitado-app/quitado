@@ -22,6 +22,7 @@ const config = (overrides: Partial<Config> = {}): Config => ({
   commitment: 'confirmed',
   utcOffsetMinutes: 0,
   trustProxy: false,
+  siteHost: undefined,
   ...overrides,
 });
 

@@ -12,6 +12,8 @@ import {
 import type { Config } from '../config.ts';
 import type { InvoiceStore } from '../storage/index.ts';
 import { APP_CSS, APP_JS } from './assets.ts';
+import { LANDING_CSS } from './landing-assets.ts';
+import { landingPage } from './landing.ts';
 import { createRateLimiter, type Auth, type RateLimiter } from './auth.ts';
 import { endOfDay, explorerTxUrl, formatDate } from './format.ts';
 import {
@@ -42,7 +44,8 @@ import { buildPaymentUrl } from './solana-pay.ts';
 export type AppConfig = Pick<
   Config,
   'baseUrl' | 'recipient' | 'cluster' | 'ownerName' | 'utcOffsetMinutes' | 'trustProxy'
->;
+> &
+  Partial<Pick<Config, 'siteHost'>>;
 
 export interface AppDeps {
   config: AppConfig;
@@ -116,6 +119,17 @@ export function createWebServer(deps: AppDeps): Server {
     return pickLang(ctx.query.get('lang'), Array.isArray(header) ? header[0] : header);
   };
 
+  // The project's home page lives on its own host name, served by this same process.
+  const siteHost = config.siteHost;
+  const siteUrl = siteHost ? `${new URL(config.baseUrl).protocol}//${siteHost}` : undefined;
+  const requestHost = (ctx: Context): string => {
+    const header = ctx.request.headers.host;
+    const host = (Array.isArray(header) ? header[0] : header) ?? '';
+    return host.toLowerCase().replace(/:\d+$/, '');
+  };
+  const onSiteHost = (ctx: Context): boolean =>
+    siteHost !== undefined && requestHost(ctx) === siteHost;
+
   // Who is asking for the money: the owner's name, or else the host this instance is served from.
   const issuer = config.ownerName ?? new URL(config.baseUrl).host;
 
@@ -183,7 +197,41 @@ export function createWebServer(deps: AppDeps): Server {
     {
       method: 'GET',
       pattern: /^\/$/,
-      handler: (ctx) => redirect(ctx, '/admin'),
+      handler: (ctx) => {
+        if (!onSiteHost(ctx) || !siteUrl) return redirect(ctx, '/admin');
+        send(
+          ctx,
+          200,
+          landingPage({
+            lang: publicLang(ctx),
+            now: ctx.now,
+            utcOffsetMinutes: config.utcOffsetMinutes,
+            siteUrl,
+          }),
+          'text/html; charset=utf-8',
+          { Vary: 'Accept-Language', 'Cache-Control': 'public, max-age=300' },
+        );
+      },
+    },
+    {
+      method: 'GET',
+      pattern: /^\/robots\.txt$/,
+      handler: (ctx) =>
+        send(
+          ctx,
+          200,
+          onSiteHost(ctx) ? 'User-agent: *\nAllow: /\n' : 'User-agent: *\nDisallow: /\n',
+          'text/plain; charset=utf-8',
+          { 'Cache-Control': 'public, max-age=3600', Vary: 'Host' },
+        ),
+    },
+    {
+      method: 'GET',
+      pattern: /^\/static\/landing\.css$/,
+      handler: (ctx) =>
+        send(ctx, 200, LANDING_CSS, 'text/css; charset=utf-8', {
+          'Cache-Control': 'public, max-age=300',
+        }),
     },
     {
       method: 'GET',
@@ -447,6 +495,18 @@ export function createWebServer(deps: AppDeps): Server {
         ctx.path = url.pathname;
         ctx.query = url.searchParams;
         const method = request.method === 'HEAD' ? 'GET' : request.method;
+
+        // The site host only shows the home page. Anything else it is asked for (an old payment
+        // link, /admin) lives on the instance's own address.
+        if (
+          onSiteHost(ctx) &&
+          ctx.path !== '/' &&
+          ctx.path !== '/healthz' &&
+          ctx.path !== '/robots.txt' &&
+          !ctx.path.startsWith('/static/')
+        ) {
+          return redirect(ctx, `${config.baseUrl}${ctx.path}${url.search}`);
+        }
 
         // Public pages are open to anyone, so they get a per-client limit.
         if (ctx.path.startsWith('/pay/') || ctx.path.startsWith('/api/pay/')) {
