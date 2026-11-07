@@ -33,7 +33,11 @@ documentation (November 2026):
    deployment once that returns 200, so a broken release never replaces a working one.
 4. **Variables:** the same ones as above (`QUITADO_RECIPIENT`, `QUITADO_ACCESS_SECRET`,
    `QUITADO_BASE_URL`, `QUITADO_TRUST_PROXY=true`, `QUITADO_RPC_URL`, and optionally
-   `QUITADO_OWNER_NAME` and `QUITADO_UTC_OFFSET_MINUTES`).
+   `QUITADO_OWNER_NAME` and `QUITADO_UTC_OFFSET_MINUTES`). With the domain Railway generates, the
+   app takes its public address from `RAILWAY_PUBLIC_DOMAIN` and trusts Railway's proxy by default, so
+   `QUITADO_BASE_URL` and `QUITADO_TRUST_PROXY` can be left out; set them yourself for a custom domain.
+   A step-by-step guide in Portuguese is in [pt-BR/railway.md](./pt-BR/railway.md), and what a one-click
+   template has to contain is in [railway-template.md](./railway-template.md).
 5. **Domain:** add it under the service's networking settings. Railway shows a CNAME record **and** a
    TXT record that proves you own the domain; the domain will not verify with only one of them. For
    the root of a domain (no `www.` or other prefix) Railway supports ALIAS and CNAME flattening, so
