@@ -8,8 +8,13 @@ export interface PageContext {
   cluster: Cluster;
   utcOffsetMinutes: number;
   now: number;
-  /** Language of the public pages. The owner pages are still English only. */
+  /** Language of the page: the visitor's choice, else their browser's, else English. */
   lang: Lang;
+  /**
+   * "?lang=pt-BR" when the language was chosen in the address, otherwise "". Owner links and form
+   * actions carry it, so a language picked with the switch survives navigation without a cookie.
+   */
+  langQuery: string;
 }
 
 function layout(options: {
@@ -18,19 +23,22 @@ function layout(options: {
   cluster: Cluster;
   admin?: boolean;
   lang?: Lang;
-  /** Replaces the owner navigation, for pages that offer a language switch instead. */
+  /** Added to the owner's navigation links; see PageContext. */
+  langQuery?: string;
+  /** The language switch, shown next to the owner navigation or on its own on public pages. */
   switcher?: Raw;
 }): string {
   const lang = options.lang ?? 'en';
+  const q = options.langQuery ?? '';
   const banner =
     options.cluster === 'devnet' ? html`<div class="banner">${t(lang, 'devnetBanner')}</div>` : '';
   const nav = options.admin
-    ? html`<nav>
-        <a href="/admin">Invoices</a>
-        <a href="/admin/invoices/new">New invoice</a>
-        <a href="/admin/stats">Stats</a>
-        <form class="inline" method="post" action="/admin/logout">
-          <button class="link" type="submit">Sign out</button>
+    ? html`<nav aria-label="Quitado">
+        <a href="/admin${q}">${t(lang, 'navInvoices')}</a>
+        <a href="/admin/invoices/new${q}">${t(lang, 'navNewInvoice')}</a>
+        <a href="/admin/stats${q}">${t(lang, 'navStats')}</a>
+        <form class="inline" method="post" action="/admin/logout${q}">
+          <button class="link" type="submit">${t(lang, 'navSignOut')}</button>
         </form>
       </nav>`
     : '';
@@ -71,59 +79,79 @@ const amountOf = (invoice: Invoice, lang: Lang = 'en') =>
   `${displayAmount(invoice.amount, invoice.asset.decimals, lang)} ${invoice.asset.symbol}`;
 
 export function loginPage(ctx: PageContext, error?: string): string {
+  const lang = ctx.lang;
   return layout({
-    title: 'Sign in · Quitado',
+    title: `${t(lang, 'loginTitle')} · Quitado`,
     cluster: ctx.cluster,
+    lang,
+    switcher: languageSwitch(lang, '/admin/login'),
     body: html`<div class="card">
-      <h1>Sign in</h1>
-      <p class="muted">Enter the access secret configured for this instance.</p>
+      <h1>${t(lang, 'loginTitle')}</h1>
+      <p class="muted">${t(lang, 'loginIntro')}</p>
       ${error ? html`<div class="error" role="alert">${error}</div>` : ''}
-      <form method="post" action="/admin/login">
-        <label for="secret">Access secret</label>
+      <form method="post" action="/admin/login${ctx.langQuery}">
+        <label for="secret">${t(lang, 'loginSecret')}</label>
         <input id="secret" name="secret" type="password" autocomplete="current-password" required />
-        <p><button type="submit">Sign in</button></p>
+        <p><button type="submit">${t(lang, 'loginSubmit')}</button></p>
       </form>
     </div>`,
   });
 }
 
 export function dashboardPage(ctx: PageContext, invoices: readonly Invoice[]): string {
+  const lang = ctx.lang;
+  const m = (key: MessageKey, params?: Record<string, string>) => t(lang, key, params);
   const open = invoices.filter((invoice) => invoice.status === 'open').length;
+  // On a phone the table turns into one block per invoice; each cell then names itself with its
+  // data-label, and the roles keep the table semantics that display: block would otherwise drop.
   const rows = invoices.map(
     (invoice) =>
-      html`<tr>
-        <td>${invoice.clientName}</td>
-        <td>
+      html`<tr role="row">
+        <td role="cell" data-label="${m('colClient')}" class="stack-title">
+          ${invoice.clientName}
+        </td>
+        <td role="cell" data-label="${m('colDescription')}" class="stack-wide">
           ${invoice.description.length > 60 ? `${invoice.description.slice(0, 60)}…` : invoice.description}
         </td>
-        <td class="num">${amountOf(invoice)}</td>
-        <td class="nowrap">${formatDate(invoice.dueAt, ctx.utcOffsetMinutes)}</td>
-        <td>${statusChip(invoice, ctx.now)}</td>
-        <td><a href="/admin/invoices/${invoice.id}">View</a></td>
+        <td role="cell" data-label="${m('colAmount')}" class="num">${amountOf(invoice, lang)}</td>
+        <td role="cell" data-label="${m('due')}" class="nowrap stack-due">
+          ${formatDate(invoice.dueAt, ctx.utcOffsetMinutes, lang)}
+        </td>
+        <td role="cell" data-label="${m('colStatus')}" class="stack-status">
+          ${statusChip(invoice, ctx.now, lang)}
+        </td>
+        <td role="cell" class="stack-action">
+          <a href="/admin/invoices/${invoice.id}${ctx.langQuery}">${m('view')}</a>
+        </td>
       </tr>`,
   );
   return layout({
-    title: 'Invoices · Quitado',
+    title: `${m('invoicesTitle')} · Quitado`,
     cluster: ctx.cluster,
     admin: true,
-    body: html`<h1>Invoices</h1>
-      <p class="muted">${invoices.length} shown, ${open} open.</p>
+    lang,
+    langQuery: ctx.langQuery,
+    switcher: languageSwitch(lang, '/admin'),
+    body: html`<h1>${m('invoicesTitle')}</h1>
+      <p class="muted">
+        ${m('invoicesCount', { count: String(invoices.length), open: String(open) })}
+      </p>
       ${
         invoices.length === 0
           ? html`<div class="card">
-              <p>No invoices yet.</p>
-              <a class="button" href="/admin/invoices/new">Create your first invoice</a>
+              <p>${m('noInvoices')}</p>
+              <a class="button" href="/admin/invoices/new${ctx.langQuery}">${m('createFirst')}</a>
             </div>`
           : html`<div class="card">
-              <table>
+              <table class="stack" role="table">
                 <thead>
-                  <tr>
-                    <th>Client</th>
-                    <th>Description</th>
-                    <th class="num">Amount</th>
-                    <th>Due</th>
-                    <th>Status</th>
-                    <th></th>
+                  <tr role="row">
+                    <th role="columnheader">${m('colClient')}</th>
+                    <th role="columnheader">${m('colDescription')}</th>
+                    <th role="columnheader" class="num">${m('colAmount')}</th>
+                    <th role="columnheader">${m('due')}</th>
+                    <th role="columnheader">${m('colStatus')}</th>
+                    <th role="columnheader"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -149,6 +177,8 @@ export function newInvoicePage(
   values: NewInvoiceValues,
   error?: string,
 ): string {
+  const lang = ctx.lang;
+  const m = (key: MessageKey, params?: Record<string, string>) => t(lang, key, params);
   const options = assets.map(
     (asset) =>
       html`<option
@@ -159,14 +189,17 @@ export function newInvoicePage(
       </option>`,
   );
   return layout({
-    title: 'New invoice · Quitado',
+    title: `${m('newInvoiceTitle')} · Quitado`,
     cluster: ctx.cluster,
     admin: true,
-    body: html`<h1>New invoice</h1>
+    lang,
+    langQuery: ctx.langQuery,
+    switcher: languageSwitch(lang, '/admin/invoices/new'),
+    body: html`<h1>${m('newInvoiceTitle')}</h1>
       <div class="card">
         ${error ? html`<div class="error" role="alert">${error}</div>` : ''}
-        <form method="post" action="/admin/invoices">
-          <label for="client_name">Client</label>
+        <form method="post" action="/admin/invoices${ctx.langQuery}">
+          <label for="client_name">${m('fieldClient')}</label>
           <input
             id="client_name"
             name="client_name"
@@ -174,14 +207,14 @@ export function newInvoicePage(
             required
             value="${values.clientName}"
           />
-          <label for="description">Description</label>
+          <label for="description">${m('fieldDescription')}</label>
           <textarea id="description" name="description" maxlength="1000" required>
 ${values.description}</textarea>
-          <label for="asset">Token</label>
+          <label for="asset">${m('fieldToken')}</label>
           <select id="asset" name="asset">
             ${options}
           </select>
-          <label for="amount">Amount</label>
+          <label for="amount">${m('fieldAmount')}</label>
           <input
             id="amount"
             name="amount"
@@ -190,9 +223,9 @@ ${values.description}</textarea>
             required
             value="${values.amount}"
           />
-          <label for="due_date">Due date</label>
+          <label for="due_date">${m('fieldDueDate')}</label>
           <input id="due_date" name="due_date" type="date" required value="${values.dueDate}" />
-          <p><button type="submit">Create invoice</button></p>
+          <p><button type="submit">${m('createInvoice')}</button></p>
         </form>
       </div>`,
   });
@@ -206,55 +239,67 @@ function liveStatusAttributes(invoiceId: string) {
 
 export function invoiceDetailPage(ctx: PageContext, invoice: Invoice, payUrl: string): string {
   const payment = invoice.payment;
+  const lang = ctx.lang;
+  const m = (key: MessageKey, params?: Record<string, string>) => t(lang, key, params);
+  const title = m('invoiceFor', { client: invoice.clientName });
   return layout({
-    title: `Invoice for ${invoice.clientName} · Quitado`,
+    title: `${title} · Quitado`,
     cluster: ctx.cluster,
     admin: true,
-    body: html`<h1>Invoice for ${invoice.clientName}</h1>
+    lang,
+    langQuery: ctx.langQuery,
+    switcher: languageSwitch(lang, `/admin/invoices/${invoice.id}`),
+    body: html`<h1>${title}</h1>
       <div class="card" ${payment ? '' : liveStatusAttributes(invoice.id)}>
-        <div class="amount">${amountOf(invoice)}</div>
-        <p>${statusChip(invoice, ctx.now)}</p>
+        <div class="amount">${amountOf(invoice, lang)}</div>
+        <p>${statusChip(invoice, ctx.now, lang)}</p>
         <p>${invoice.description}</p>
         <div class="row">
           <div>
-            <span class="label">Created</span>${formatDate(invoice.createdAt, ctx.utcOffsetMinutes)}
+            <span class="label">${m('created')}</span
+            >${formatDate(invoice.createdAt, ctx.utcOffsetMinutes, lang)}
           </div>
           <div>
-            <span class="label">Due</span>${formatDate(invoice.dueAt, ctx.utcOffsetMinutes)}
+            <span class="label">${m('due')}</span
+            >${formatDate(invoice.dueAt, ctx.utcOffsetMinutes, lang)}
           </div>
         </div>
       </div>
       <div class="card">
-        <h2>Payment link</h2>
-        <p class="muted">Send this link to your client. Anyone who has it can see this invoice.</p>
+        <h2>${m('paymentLinkHeading')}</h2>
+        <p class="muted">${m('paymentLinkNote')}</p>
         <div class="copy-row">
           <span class="mono">${payUrl}</span>
-          <button class="secondary" type="button" data-copy="${payUrl}">Copy</button>
-          <a class="button secondary" href="${payUrl}">Open</a>
+          <button
+            class="secondary"
+            type="button"
+            data-copy="${payUrl}"
+            data-copied="${m('copied')}"
+          >
+            ${m('copy')}
+          </button>
+          <a class="button secondary" href="${payUrl}">${m('openLink')}</a>
         </div>
-        ${
-          payment
-            ? ''
-            : html`<p class="muted">This page updates by itself when the payment is detected.</p>`
-        }
+        ${payment ? '' : html`<p class="muted">${m('updatesByItself')}</p>`}
       </div>
       ${
         payment
           ? html`<div class="card">
-              <h2>Payment received</h2>
+              <h2>${m('paymentReceivedHeading')}</h2>
               <div class="row">
                 <div>
-                  <span class="label">Amount received</span
-                  >${displayAmount(payment.amount, invoice.asset.decimals)} ${invoice.asset.symbol}
+                  <span class="label">${m('amountReceived')}</span
+                  >${displayAmount(payment.amount, invoice.asset.decimals, lang)}
+                  ${invoice.asset.symbol}
                 </div>
                 <div>
-                  <span class="label">Received</span
-                  >${formatDate(payment.receivedAt, ctx.utcOffsetMinutes)}
+                  <span class="label">${m('receivedOn')}</span
+                  >${formatDate(payment.receivedAt, ctx.utcOffsetMinutes, lang)}
                 </div>
                 ${
                   payment.payer
                     ? html`<div>
-                        <span class="label">From</span
+                        <span class="label">${m('from')}</span
                         ><span class="mono">${shorten(payment.payer)}</span>
                       </div>`
                     : ''
@@ -262,11 +307,13 @@ export function invoiceDetailPage(ctx: PageContext, invoice: Invoice, payUrl: st
               </div>
               <p>
                 <a href="${explorerTxUrl(payment.signature, ctx.cluster)}" rel="noopener noreferrer"
-                  >View the transaction in the explorer</a
+                  >${m('viewInExplorer')}</a
                 >
               </p>
               <p>
-                <a class="button" href="/pay/${invoice.id}/receipt.pdf">Download receipt (PDF)</a>
+                <a class="button" href="/pay/${invoice.id}/receipt.pdf${ctx.langQuery}"
+                  >${m('downloadReceipt')}</a
+                >
               </p>
             </div>`
           : ''
@@ -285,11 +332,11 @@ export interface PayPageData {
   statusUrl: string;
 }
 
-/** Language switch for the public pages. Plain links, so it works without JavaScript or cookies. */
-function languageSwitch(lang: Lang): Raw {
+/** Language switch for every page. Plain links, so it works without JavaScript or cookies. */
+function languageSwitch(lang: Lang, path = ''): Raw {
   const link = (target: Lang, label: string) =>
     html`<a
-      href="?lang=${target}"
+      href="${path}?lang=${target}"
       lang="${target}"
       hreflang="${target}"
       ${target === lang ? raw('aria-current="true"') : ''}
@@ -432,11 +479,12 @@ export function messagePage(
   cluster: Cluster,
   title: string,
   message: string,
-  options: { admin?: boolean } = {},
+  options: { admin?: boolean; lang?: Lang } = {},
 ): string {
   return layout({
     title: `${title} · Quitado`,
     cluster,
+    lang: options.lang ?? 'en',
     ...(options.admin ? { admin: true } : {}),
     body: html`<div class="card">
       <h1>${title}</h1>
@@ -446,6 +494,8 @@ export function messagePage(
 }
 
 export function statsPage(ctx: PageContext, stats: InvoiceStats): string {
+  const lang = ctx.lang;
+  const m = (key: MessageKey, params?: Record<string, string>) => t(lang, key, params);
   const paidShare = stats.total === 0 ? '0%' : `${Math.round((stats.paid / stats.total) * 100)}%`;
   const tile = (label: string, value: string | number) =>
     html`<div class="tile">
@@ -458,8 +508,8 @@ export function statsPage(ctx: PageContext, stats: InvoiceStats): string {
         <td>${asset.symbol}</td>
         <td class="num">${asset.invoices}</td>
         <td class="num">${asset.paid}</td>
-        <td class="num">${displayAmount(asset.invoiced, asset.decimals)}</td>
-        <td class="num">${displayAmount(asset.received, asset.decimals)}</td>
+        <td class="num">${displayAmount(asset.invoiced, asset.decimals, lang)}</td>
+        <td class="num">${displayAmount(asset.received, asset.decimals, lang)}</td>
       </tr>`,
   );
   const monthRows = stats.byMonth.map(
@@ -468,36 +518,37 @@ export function statsPage(ctx: PageContext, stats: InvoiceStats): string {
         <td>${entry.month}</td>
         <td>${entry.symbol}</td>
         <td class="num">${entry.payments}</td>
-        <td class="num">${displayAmount(entry.received, entry.decimals)}</td>
+        <td class="num">${displayAmount(entry.received, entry.decimals, lang)}</td>
       </tr>`,
   );
 
   return layout({
-    title: 'Stats · Quitado',
+    title: `${m('statsTitle')} · Quitado`,
     cluster: ctx.cluster,
     admin: true,
-    body: html`<h1>Stats</h1>
-      <p class="muted">
-        Computed from this instance's own database. Nothing is sent anywhere. Months follow the
-        instance's UTC offset.
-      </p>
+    lang,
+    langQuery: ctx.langQuery,
+    switcher: languageSwitch(lang, '/admin/stats'),
+    body: html`<h1>${m('statsTitle')}</h1>
+      <p class="muted">${m('statsNote')}</p>
       <div class="tiles">
-        ${tile('Invoices issued', stats.total)} ${tile('Paid', `${stats.paid} (${paidShare})`)}
-        ${tile('Open', stats.open)} ${tile('Past due', stats.overdue)}
+        ${tile(m('statsIssued'), stats.total)}
+        ${tile(m('statusPaid'), `${stats.paid} (${paidShare})`)}
+        ${tile(m('statusOpen'), stats.open)} ${tile(m('statusOverdue'), stats.overdue)}
       </div>
       ${
         stats.total === 0
-          ? html`<div class="card"><p>No invoices yet, so there is nothing to total.</p></div>`
-          : html`<h2>By token</h2>
-              <div class="card">
+          ? html`<div class="card"><p>${m('statsNoInvoices')}</p></div>`
+          : html`<h2>${m('byToken')}</h2>
+              <div class="card table-scroll">
                 <table>
                   <thead>
                     <tr>
-                      <th>Token</th>
-                      <th class="num">Invoices</th>
-                      <th class="num">Paid</th>
-                      <th class="num">Invoiced</th>
-                      <th class="num">Received</th>
+                      <th>${m('token')}</th>
+                      <th class="num">${m('colInvoices')}</th>
+                      <th class="num">${m('statusPaid')}</th>
+                      <th class="num">${m('colInvoiced')}</th>
+                      <th class="num">${m('colReceived')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -505,18 +556,18 @@ export function statsPage(ctx: PageContext, stats: InvoiceStats): string {
                   </tbody>
                 </table>
               </div>
-              <h2>Payments by month</h2>
-              <div class="card">
+              <h2>${m('paymentsByMonth')}</h2>
+              <div class="card table-scroll">
                 ${
                   stats.byMonth.length === 0
-                    ? html`<p>No payments received yet.</p>`
+                    ? html`<p>${m('noPayments')}</p>`
                     : html`<table>
                         <thead>
                           <tr>
-                            <th>Month</th>
-                            <th>Token</th>
-                            <th class="num">Payments</th>
-                            <th class="num">Received</th>
+                            <th>${m('colMonth')}</th>
+                            <th>${m('token')}</th>
+                            <th class="num">${m('colPayments')}</th>
+                            <th class="num">${m('colReceived')}</th>
                           </tr>
                         </thead>
                         <tbody>

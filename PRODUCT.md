@@ -31,7 +31,7 @@ Funds never touch Quitado. There is no custody, no account balance, no withdrawa
 ## Capabilities and Constraints
 
 - Routes: `/admin` (invoice list), `/admin/stats`, new-invoice form, `/pay/<id>` (public payment page with QR and live status), `/pay/<id>/receipt.pdf`, `/healthz`, and `/` as the project's home page when the request host is `QUITADO_SITE_HOST` (otherwise `/` goes to the sign-in).
-- Portuguese (Brazil) and English are both supported, side by side. The payment page and the home page pick the language from `?lang=`, then the visitor's browser, then English, and show a visible switch; no cookie. The owner's pages are still English only.
+- Portuguese (Brazil) and English are both supported, side by side. Every page (the owner's too) picks the language from `?lang=`, then the visitor's browser, then English, and shows a visible switch; no cookie. On the owner pages a language chosen with the switch is carried in their links and redirects.
 - Single owner, single access secret, no user accounts. Public pages are rate limited.
 - Not a fiscal document: a receipt is proof of an on-chain payment, not a nota fiscal. Brazilian tax helpers (PTAX conversion, carnê-leão support, export) are planned, not built, and must not be implied by the interface.
 - Only USDC and USDT are supported. The network (mainnet or devnet) is shown to the user where it matters.

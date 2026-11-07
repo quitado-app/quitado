@@ -24,7 +24,7 @@ import {
   readBody,
   serializeCookie,
 } from './http-utils.ts';
-import { pickLang, type Lang } from './i18n.ts';
+import { fromTag, formError, pickLang, t, type Lang, type MessageKey } from './i18n.ts';
 import { newInvoiceId, newReference } from './ids.ts';
 import {
   dashboardPage,
@@ -106,18 +106,26 @@ export function createWebServer(deps: AppDeps): Server {
     ...(https ? { 'Strict-Transport-Security': 'max-age=15552000' } : {}),
   };
 
-  const pageContext = (ctx: Context, lang: Lang = 'en'): PageContext => ({
-    cluster: config.cluster,
-    utcOffsetMinutes: config.utcOffsetMinutes,
-    now: ctx.now,
-    lang,
-  });
-
-  // Public pages follow ?lang=, then the browser's language. Owner pages stay English for now.
-  const publicLang = (ctx: Context): Lang => {
+  // Every page follows ?lang=, then the browser's language, then English.
+  const langOf = (ctx: Context): Lang => {
     const header = ctx.request.headers['accept-language'];
     return pickLang(ctx.query.get('lang'), Array.isArray(header) ? header[0] : header);
   };
+
+  // "?lang=pt-BR" when the address names a language: owner links and redirects carry it, so a
+  // language picked with the switch is kept without a cookie.
+  const langQuery = (ctx: Context): string => {
+    const chosen = fromTag(ctx.query.get('lang'));
+    return chosen ? `?lang=${chosen}` : '';
+  };
+
+  const pageContext = (ctx: Context): PageContext => ({
+    cluster: config.cluster,
+    utcOffsetMinutes: config.utcOffsetMinutes,
+    now: ctx.now,
+    lang: langOf(ctx),
+    langQuery: langQuery(ctx),
+  });
 
   // The project's home page lives on its own host name, served by this same process.
   const siteHost = config.siteHost;
@@ -160,8 +168,13 @@ export function createWebServer(deps: AppDeps): Server {
     ctx.response.end();
   };
 
+  const noticePage = (ctx: Context, title: MessageKey, text: MessageKey): string => {
+    const lang = langOf(ctx);
+    return messagePage(config.cluster, t(lang, title), t(lang, text), { lang });
+  };
+
   const notFound = (ctx: Context) =>
-    send(ctx, 404, messagePage(config.cluster, 'Not found', 'This page does not exist.'));
+    send(ctx, 404, noticePage(ctx, 'notFoundTitle', 'notFoundText'));
 
   const isAuthed = (ctx: Context) =>
     auth.verifySession(parseCookies(ctx.request.headers.cookie).get(cookieName), ctx.now);
@@ -171,13 +184,9 @@ export function createWebServer(deps: AppDeps): Server {
     (handler: Handler, options: { write?: boolean } = {}): Handler =>
     (ctx, match) => {
       if (options.write && !isSameOrigin(ctx.request, config.baseUrl)) {
-        return send(
-          ctx,
-          403,
-          messagePage(config.cluster, 'Forbidden', 'Cross-site request refused.'),
-        );
+        return send(ctx, 403, noticePage(ctx, 'forbiddenTitle', 'crossSite'));
       }
-      if (!isAuthed(ctx)) return redirect(ctx, '/admin/login');
+      if (!isAuthed(ctx)) return redirect(ctx, `/admin/login${langQuery(ctx)}`);
       return handler(ctx, match);
     };
 
@@ -198,12 +207,12 @@ export function createWebServer(deps: AppDeps): Server {
       method: 'GET',
       pattern: /^\/$/,
       handler: (ctx) => {
-        if (!onSiteHost(ctx) || !siteUrl) return redirect(ctx, '/admin');
+        if (!onSiteHost(ctx) || !siteUrl) return redirect(ctx, `/admin${langQuery(ctx)}`);
         send(
           ctx,
           200,
           landingPage({
-            lang: publicLang(ctx),
+            lang: langOf(ctx),
             now: ctx.now,
             utcOffsetMinutes: config.utcOffsetMinutes,
             siteUrl,
@@ -259,25 +268,23 @@ export function createWebServer(deps: AppDeps): Server {
       method: 'GET',
       pattern: /^\/admin\/login$/,
       handler: (ctx) =>
-        isAuthed(ctx) ? redirect(ctx, '/admin') : send(ctx, 200, loginPage(pageContext(ctx))),
+        isAuthed(ctx)
+          ? redirect(ctx, `/admin${langQuery(ctx)}`)
+          : send(ctx, 200, loginPage(pageContext(ctx))),
     },
     {
       method: 'POST',
       pattern: /^\/admin\/login$/,
       handler: async (ctx) => {
         if (!isSameOrigin(ctx.request, config.baseUrl)) {
-          return send(
-            ctx,
-            403,
-            messagePage(config.cluster, 'Forbidden', 'Cross-site request refused.'),
-          );
+          return send(ctx, 403, noticePage(ctx, 'forbiddenTitle', 'crossSite'));
         }
         const attempt = loginLimiter.take(ctx.ip);
         if (!attempt.allowed) {
           return send(
             ctx,
             429,
-            messagePage(config.cluster, 'Too many attempts', 'Wait a few minutes and try again.'),
+            noticePage(ctx, 'tooManyAttemptsTitle', 'tooManyAttemptsText'),
             'text/html; charset=utf-8',
             { 'Retry-After': String(attempt.retryAfterSeconds) },
           );
@@ -285,10 +292,10 @@ export function createWebServer(deps: AppDeps): Server {
         const form = parseForm(await readBody(ctx.request, 2 * 1024));
         if (!auth.verifySecret(form.get('secret') ?? '')) {
           // One generic message for every failure: never reveal why it was refused.
-          return send(ctx, 401, loginPage(pageContext(ctx), 'Incorrect access secret.'));
+          return send(ctx, 401, loginPage(pageContext(ctx), t(langOf(ctx), 'loginWrong')));
         }
         const session = auth.createSession(ctx.now);
-        redirect(ctx, '/admin', {
+        redirect(ctx, `/admin${langQuery(ctx)}`, {
           'Set-Cookie': serializeCookie(cookieName, session.value, {
             maxAgeSeconds: session.maxAgeSeconds,
             secure: https,
@@ -301,13 +308,9 @@ export function createWebServer(deps: AppDeps): Server {
       pattern: /^\/admin\/logout$/,
       handler: (ctx) => {
         if (!isSameOrigin(ctx.request, config.baseUrl)) {
-          return send(
-            ctx,
-            403,
-            messagePage(config.cluster, 'Forbidden', 'Cross-site request refused.'),
-          );
+          return send(ctx, 403, noticePage(ctx, 'forbiddenTitle', 'crossSite'));
         }
-        redirect(ctx, '/admin/login', {
+        redirect(ctx, `/admin/login${langQuery(ctx)}`, {
           'Set-Cookie': serializeCookie(cookieName, '', { maxAgeSeconds: 0, secure: https }),
         });
       },
@@ -344,7 +347,7 @@ export function createWebServer(deps: AppDeps): Server {
             send(ctx, 400, newInvoicePage(pageContext(ctx), registry.list(), values, error));
 
           const dueAt = endOfDay(values.dueDate, config.utcOffsetMinutes);
-          if (dueAt === undefined) return rerender('Enter the due date as a valid date.');
+          if (dueAt === undefined) return rerender(t(langOf(ctx), 'dueDateInvalid'));
           try {
             const invoice = createInvoice(
               {
@@ -360,7 +363,7 @@ export function createWebServer(deps: AppDeps): Server {
               ctx.now,
             );
             store.insert(invoice);
-            redirect(ctx, `/admin/invoices/${invoice.id}`);
+            redirect(ctx, `/admin/invoices/${invoice.id}${langQuery(ctx)}`);
           } catch (error) {
             // Domain errors carry messages written for the owner; anything else is a real fault.
             if (
@@ -368,7 +371,7 @@ export function createWebServer(deps: AppDeps): Server {
               error instanceof InvoiceError ||
               error instanceof AssetError
             ) {
-              return rerender(error.message.charAt(0).toUpperCase() + error.message.slice(1));
+              return rerender(formError(langOf(ctx), error.message));
             }
             throw error;
           }
@@ -413,7 +416,7 @@ export function createWebServer(deps: AppDeps): Server {
         send(
           ctx,
           200,
-          payPage(pageContext(ctx, publicLang(ctx)), {
+          payPage(pageContext(ctx), {
             invoice,
             issuer,
             recipient: config.recipient,
@@ -441,7 +444,7 @@ export function createWebServer(deps: AppDeps): Server {
           cluster: config.cluster,
           utcOffsetMinutes: config.utcOffsetMinutes,
           generatedAt: ctx.now,
-          lang: publicLang(ctx),
+          lang: langOf(ctx),
         });
         send(ctx, 200, pdf, 'application/pdf', {
           'Content-Disposition': `inline; filename="receipt-${invoice.id}.pdf"`,
@@ -517,11 +520,7 @@ export function createWebServer(deps: AppDeps): Server {
             return send(
               ctx,
               429,
-              messagePage(
-                config.cluster,
-                'Too many requests',
-                'Please slow down and try again shortly.',
-              ),
+              noticePage(ctx, 'tooManyRequestsTitle', 'tooManyRequestsText'),
               'text/html; charset=utf-8',
               { 'Retry-After': String(attempt.retryAfterSeconds) },
             );
@@ -538,15 +537,7 @@ export function createWebServer(deps: AppDeps): Server {
           return;
         }
         if (pathMatched) {
-          return send(
-            ctx,
-            405,
-            messagePage(
-              config.cluster,
-              'Method not allowed',
-              'This page does not accept that request.',
-            ),
-          );
+          return send(ctx, 405, noticePage(ctx, 'methodTitle', 'methodText'));
         }
         notFound(ctx);
       } catch (error) {
@@ -555,18 +546,10 @@ export function createWebServer(deps: AppDeps): Server {
           return;
         }
         if (error instanceof BodyTooLargeError) {
-          return send(
-            ctx,
-            413,
-            messagePage(config.cluster, 'Too large', 'The request is too large.'),
-          );
+          return send(ctx, 413, noticePage(ctx, 'tooLargeTitle', 'tooLargeText'));
         }
         deps.onError?.(error);
-        send(
-          ctx,
-          500,
-          messagePage(config.cluster, 'Something went wrong', 'Please try again later.'),
-        );
+        send(ctx, 500, noticePage(ctx, 'errorTitle', 'errorText'));
       }
     })();
   });

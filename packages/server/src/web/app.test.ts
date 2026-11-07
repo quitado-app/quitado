@@ -751,6 +751,209 @@ describe('web app', () => {
     });
   });
 
+  describe('owner pages in Portuguese', () => {
+    beforeEach(() => start());
+    const PT = { 'accept-language': 'pt-BR,pt;q=0.9' };
+
+    it('follow ?lang=, then the browser language, and stay English otherwise', async () => {
+      expect((await call('/admin/login')).body).toContain('<h1>Sign in</h1>');
+      const byBrowser = await call('/admin/login', { headers: PT });
+      expect(byBrowser.body).toContain('<html lang="pt-BR">');
+      expect(byBrowser.body).toContain('<h1>Entrar</h1>');
+      expect(byBrowser.body).toContain('Senha de acesso');
+      const byQuery = await call('/admin/login?lang=en', { headers: PT });
+      expect(byQuery.body).toContain('<h1>Sign in</h1>');
+    });
+
+    it('show a switch whose links point at a page that can be fetched', async () => {
+      const { body } = await call('/admin/login');
+      expect(body).toContain('href="/admin/login?lang=pt-BR"');
+      expect(body).toContain('href="/admin/login?lang=en"');
+      expect(body).toContain('aria-current="true"');
+      const cookie = await login();
+      const list = await call('/admin', { headers: { cookie } });
+      expect(list.body).toContain('href="/admin?lang=pt-BR"');
+    });
+
+    it('say a wrong secret in Portuguese, and keep the language after signing in', async () => {
+      const wrong = await form('/admin/login?lang=pt-BR', { secret: 'nope' });
+      expect(wrong.status).toBe(401);
+      expect(wrong.body).toContain('Senha de acesso incorreta.');
+      expect(wrong.body).toContain('action="/admin/login?lang=pt-BR"');
+      const ok = await form('/admin/login?lang=pt-BR', { secret: SECRET });
+      expect(ok.headers.location).toBe('/admin?lang=pt-BR');
+      const plain = await form('/admin/login', { secret: SECRET });
+      expect(plain.headers.location).toBe('/admin');
+    });
+
+    it('keep the language when sending anonymous visitors to the sign-in, and on sign out', async () => {
+      const anonymous = await call('/admin?lang=pt-BR');
+      expect(anonymous.headers.location).toBe('/admin/login?lang=pt-BR');
+      const cookie = await login();
+      const out = await form('/admin/logout?lang=pt-BR', {}, { cookie });
+      expect(out.headers.location).toBe('/admin/login?lang=pt-BR');
+    });
+
+    it('show the invoice list in Portuguese, with Brazilian amounts and dates', async () => {
+      const cookie = await login();
+      await createInvoiceViaForm(cookie);
+      const { body } = await call('/admin', { headers: { cookie, ...PT } });
+      for (const text of [
+        '<h1>Faturas</h1>',
+        'Nova fatura',
+        'Estatísticas',
+        'Sair',
+        '1 exibidas, 1 em aberto.',
+        'Em aberto',
+        '1.250,50 USDC',
+        '20/11/2026',
+        '>Ver<',
+      ]) {
+        expect(body).toContain(text);
+      }
+      expect(body).not.toContain('Sign out');
+    });
+
+    it('carry a chosen language through the owner menu and the invoice links', async () => {
+      const cookie = await login();
+      const id = await createInvoiceViaForm(cookie);
+      const { body } = await call('/admin?lang=pt-BR', { headers: { cookie } });
+      expect(body).toContain('href="/admin/invoices/new?lang=pt-BR"');
+      expect(body).toContain('href="/admin/stats?lang=pt-BR"');
+      expect(body).toContain(`href="/admin/invoices/${id}?lang=pt-BR"`);
+      expect(body).toContain('action="/admin/logout?lang=pt-BR"');
+      // Without a chosen language the links stay plain: the browser language decides.
+      const plain = await call('/admin', { headers: { cookie, ...PT } });
+      expect(plain.body).toContain('href="/admin/stats"');
+    });
+
+    it('lay the list out as blocks on a phone: every cell names itself', async () => {
+      const cookie = await login();
+      await createInvoiceViaForm(cookie);
+      const { body } = await call('/admin', { headers: { cookie, ...PT } });
+      expect(body).toContain('<table class="stack" role="table">');
+      expect(body).toContain('role="columnheader"');
+      for (const label of ['Cliente', 'Descrição', 'Valor', 'Vencimento', 'Situação']) {
+        expect(body).toContain(`data-label="${label}"`);
+      }
+      const css = await call('/static/app.css');
+      expect(css.body).toContain('table.stack');
+    });
+
+    it('translate the new invoice form and its validation errors', async () => {
+      const cookie = await login();
+      const page = await call('/admin/invoices/new', { headers: { cookie, ...PT } });
+      expect(page.body).toContain('<h1>Nova fatura</h1>');
+      expect(page.body).toContain('Criar fatura');
+      for (const [fields, message] of [
+        [{ amount: 'abc' }, 'Valor inválido.'],
+        [{ amount: '1.1234567' }, 'Casas decimais demais: o máximo permitido é 6.'],
+        [{ amount: '0' }, 'O valor deve ser maior que zero.'],
+        [{ client_name: '  ' }, 'Informe o nome do cliente.'],
+        [{ description: '' }, 'Informe a descrição.'],
+        [{ due_date: '2026-11-01' }, 'O vencimento deve ser uma data futura.'],
+        [{ due_date: 'ontem' }, 'Informe o vencimento como uma data válida.'],
+      ] as const) {
+        const response = await form('/admin/invoices?lang=pt-BR', invoiceFields(fields), {
+          cookie,
+        });
+        expect(response.status, message).toBe(400);
+        expect(response.body, message).toContain(message);
+        // The page that shows the error can still switch language.
+        expect(response.body).toContain('href="/admin/invoices/new?lang=en"');
+      }
+      // The same mistakes stay in English as the core wrote them.
+      const english = await form('/admin/invoices', invoiceFields({ amount: 'abc' }), { cookie });
+      expect(english.body).toContain('Invalid amount');
+    });
+
+    it('keep the language after creating an invoice, and show it in Portuguese', async () => {
+      const cookie = await login();
+      const created = await form('/admin/invoices?lang=pt-BR', invoiceFields(), { cookie });
+      expect(created.status).toBe(303);
+      const location = String(created.headers.location);
+      expect(location).toMatch(/^\/admin\/invoices\/[\w-]{22}\?lang=pt-BR$/);
+      const detail = await call(location, { headers: { cookie } });
+      for (const text of [
+        'Fatura para Acme Inc',
+        '1.250,50 USDC',
+        'Link de pagamento',
+        'Esta página se atualiza sozinha',
+        'Criada em',
+        'Vencimento',
+        'data-copied="Copiado"',
+      ]) {
+        expect(detail.body).toContain(text);
+      }
+    });
+
+    it('show a paid invoice in Portuguese, with a receipt link in the same language', async () => {
+      const cookie = await login();
+      const id = await createInvoiceViaForm(cookie);
+      const invoice = store.get(id)!;
+      store.settle(
+        recordPayment(invoice, {
+          signature: 'sig-pt-owner',
+          amount: invoice.amount,
+          receivedAt: now,
+        }),
+      );
+      const { body } = await call(`/admin/invoices/${id}?lang=pt-BR`, { headers: { cookie } });
+      expect(body).toContain('Pagamento recebido');
+      expect(body).toContain('Valor recebido');
+      expect(body).toContain('Ver a transação no explorador');
+      expect(body).toContain(`href="/pay/${id}/receipt.pdf?lang=pt-BR"`);
+      expect(body).toContain('Baixar recibo (PDF)');
+    });
+
+    it('translate the stats page', async () => {
+      const cookie = await login();
+      const empty = await call('/admin/stats', { headers: { cookie, ...PT } });
+      expect(empty.body).toContain('<h1>Estatísticas</h1>');
+      expect(empty.body).toContain('Faturas emitidas');
+      expect(empty.body).toContain('Ainda não há faturas, então não há nada para somar.');
+      const id = await createInvoiceViaForm(cookie, { amount: '100' });
+      const invoice = store.get(id)!;
+      store.settle(
+        recordPayment(invoice, {
+          signature: 'sig-pt-stats',
+          amount: invoice.amount,
+          receivedAt: now,
+        }),
+      );
+      const full = await call('/admin/stats', { headers: { cookie, ...PT } });
+      for (const text of ['Por token', 'Pagamentos por mês', 'Faturado', 'Recebido', '100,00']) {
+        expect(full.body).toContain(text);
+      }
+      expect(full.body).toContain('class="card table-scroll"');
+    });
+
+    it('translate the notice pages', async () => {
+      const cookie = await login();
+      const missing = await call(`/admin/invoices/${'a'.repeat(22)}`, {
+        headers: { cookie, ...PT },
+      });
+      expect(missing.status).toBe(404);
+      expect(missing.body).toContain('Não encontrado');
+      expect(missing.body).toContain('Esta página não existe.');
+      const crossSite = await call('/admin/invoices', {
+        method: 'POST',
+        headers: {
+          ...PT,
+          origin: 'https://evil.example',
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        body: 'a=b',
+      });
+      expect(crossSite.status).toBe(403);
+      expect(crossSite.body).toContain('Acesso negado');
+      const method = await call('/healthz', { method: 'POST', headers: PT });
+      expect(method.status).toBe(405);
+      expect(method.body).toContain('Método não permitido');
+      expect((await call('/nope')).body).toContain('This page does not exist.');
+    });
+  });
+
   describe('stats page', () => {
     beforeEach(() => start());
 

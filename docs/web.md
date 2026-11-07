@@ -74,7 +74,7 @@ while `+` only by the latter.
 
 - One instance, one owner, one wallet that receives payments.
 - Rate limits and sessions live in memory of one process.
-- The dashboard is in English only for now; PT-BR comes with the Brazil package.
+- The owner pages are in English or Brazilian Portuguese, by the same rule as the public pages (`?lang=`, then the browser, then English). Amounts and dates follow the language; the Solana Pay link and the owner's data do not.
 - No recipient-side notification yet (email or webhook): the owner sees payments in the dashboard.
 
 ## Trying it on devnet

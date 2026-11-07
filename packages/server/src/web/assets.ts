@@ -105,6 +105,30 @@ details.more summary { cursor: pointer; font-weight: 600; padding: 12px 0; min-h
 details.more[open] summary { padding-bottom: 4px; }
 ol { padding-left: 22px; margin: 4px 0 12px; }
 li { margin: 4px 0; }
+.table-scroll { overflow-x: auto; }
+/* The invoice list, one block per invoice on a phone: who and how it stands, what for, how much and
+   by when, then the link to open it. The header row is hidden visually but kept for screen readers. */
+@media (max-width: 640px) {
+  table.stack thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  table.stack, table.stack tbody { display: block; }
+  table.stack tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px;
+    padding: 14px 0; border-bottom: 1px solid var(--line);
+  }
+  table.stack tr:first-child { padding-top: 0; }
+  table.stack tr:last-child { border-bottom: 0; padding-bottom: 0; }
+  table.stack td { display: block; padding: 0; border: 0; text-align: left; white-space: normal; }
+  table.stack .stack-title { grid-column: 1; grid-row: 1; font-weight: 700; overflow-wrap: anywhere; }
+  table.stack .stack-status { grid-column: 2; grid-row: 1; }
+  table.stack .stack-wide { grid-column: 1 / -1; grid-row: 2; color: var(--muted); overflow-wrap: anywhere; }
+  table.stack td.num { grid-column: 1; grid-row: 3; font-weight: 600; font-variant-numeric: tabular-nums; }
+  table.stack .stack-due { grid-column: 2; grid-row: 3; color: var(--muted); }
+  table.stack .stack-due::before { content: attr(data-label) ": "; }
+  table.stack .stack-action { grid-column: 1 / -1; grid-row: 4; }
+  table.stack .stack-action a { display: inline-flex; align-items: center; min-height: 44px; }
+}
 @media (max-width: 640px) {
   .button-block { display: block; width: 100%; text-align: center; padding: 14px 18px; }
 }
