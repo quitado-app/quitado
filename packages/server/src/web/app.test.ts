@@ -751,6 +751,57 @@ describe('web app', () => {
     });
   });
 
+  describe('accessibility of the markup', () => {
+    beforeEach(() => start());
+
+    it('gives every page a main landmark, a skip link and a polite live region', async () => {
+      const cookie = await login();
+      const id = await createInvoiceViaForm(cookie);
+      for (const [path, headers] of [
+        ['/admin/login', {}],
+        ['/admin', { cookie }],
+        ['/admin/invoices/new', { cookie }],
+        [`/admin/invoices/${id}`, { cookie }],
+        ['/admin/stats', { cookie }],
+        [`/pay/${id}`, {}],
+        ['/nope', {}],
+      ] as const) {
+        const { body } = await call(path, { headers });
+        expect(body, path).toContain('<main id="main" tabindex="-1">');
+        expect(body, path).toContain('<a class="skip" href="#main">');
+        expect(body, path).toContain('id="live-status" role="status" aria-live="polite"');
+        expect(body.split('<main').length, path).toBe(2);
+        expect(body.split('<h1').length, path).toBe(2);
+      }
+    });
+
+    it('marks the owner menu entry of the page being shown, once', async () => {
+      const cookie = await login();
+      const id = await createInvoiceViaForm(cookie);
+      const expectations = [
+        ['/admin', '/admin'],
+        ['/admin/invoices/new', '/admin/invoices/new'],
+        ['/admin/stats', '/admin/stats'],
+        [`/admin/invoices/${id}`, '/admin'],
+      ] as const;
+      for (const [path, entry] of expectations) {
+        const { body } = await call(path, { headers: { cookie } });
+        expect(body.split('aria-current="page"').length - 1, path).toBe(1);
+        expect(body, path).toContain(`<a href="${entry}" aria-current="page">`);
+      }
+    });
+
+    it('labels the owner menu in the page language', async () => {
+      const cookie = await login();
+      expect((await call('/admin', { headers: { cookie } })).body).toContain(
+        '<nav aria-label="Owner menu">',
+      );
+      const pt = await call('/admin', { headers: { cookie, 'accept-language': 'pt-BR' } });
+      expect(pt.body).toContain('<nav aria-label="Menu do dono">');
+      expect(pt.body).toContain('>Ir para o conteúdo<');
+    });
+  });
+
   describe('owner pages in Portuguese', () => {
     beforeEach(() => start());
     const PT = { 'accept-language': 'pt-BR,pt;q=0.9' };
