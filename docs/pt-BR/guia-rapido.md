@@ -10,6 +10,9 @@ vai **direto para a sua carteira**: o Quitado nunca guarda seus fundos nem suas 
 Cada pessoa roda a **própria instância** (uma instância, um dono). Não existe serviço hospedado: você
 mesmo coloca o programa no ar.
 
+> **Prefere não mexer em servidor?** Há um passo a passo para subir o Quitado na Railway, sem Docker
+> na sua máquina: [Quitado na Railway](railway.md).
+
 ## O que você precisa
 
 1. **Uma carteira Solana sua** (Phantom, Solflare, Backpack ou outra). O Quitado só precisa do

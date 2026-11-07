@@ -186,6 +186,33 @@ describe('loadConfig', () => {
     });
   });
 
+  describe('on Railway', () => {
+    const railway = { RAILWAY_PUBLIC_DOMAIN: 'quitado-production-1a2b.up.railway.app' };
+
+    it('takes the public address from the domain Railway generated, and trusts its proxy', () => {
+      const config = loadConfig({ ...base, ...railway });
+      expect(config.baseUrl).toBe('https://quitado-production-1a2b.up.railway.app');
+      expect(config.trustProxy).toBe(true);
+    });
+
+    it('lets explicit settings win, for a custom domain', () => {
+      const config = loadConfig({
+        ...base,
+        ...railway,
+        QUITADO_BASE_URL: 'https://pay.example.com',
+        QUITADO_TRUST_PROXY: 'false',
+      });
+      expect(config.baseUrl).toBe('https://pay.example.com');
+      expect(config.trustProxy).toBe(false);
+    });
+
+    it('changes nothing anywhere else', () => {
+      const config = loadConfig(base);
+      expect(config.baseUrl).toBe('http://localhost:3000');
+      expect(config.trustProxy).toBe(false);
+    });
+  });
+
   describe('site host', () => {
     it('is off by default and read in lowercase when set', () => {
       expect(loadConfig(base).siteHost).toBeUndefined();

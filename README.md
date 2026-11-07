@@ -19,7 +19,9 @@ You run your own instance (one owner per instance). There is no hosted service.
 
 - [Web app: running it, access and security](docs/web.md)
 - [Guia rápido em português](docs/pt-BR/guia-rapido.md)
+- [Quitado na Railway, passo a passo (português)](docs/pt-BR/railway.md)
 - [Deploying with Docker, and the mainnet checklist](docs/deploy.md)
+- [A Railway template for Quitado](docs/railway-template.md)
 - [Payment detection](docs/payment-detection.md)
 - [Payment receipts (PDF)](docs/receipts.md)
 - [Devnet spike: what we verified about Solana Pay](docs/spike-devnet.md)

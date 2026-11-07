@@ -90,7 +90,12 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   const port = integer(get('QUITADO_PORT') === undefined ? 'PORT' : 'QUITADO_PORT', 3000, 1, 65535);
   const host = get('QUITADO_HOST') ?? '127.0.0.1';
 
-  const baseUrlRaw = get('QUITADO_BASE_URL') ?? `http://localhost:${port}`;
+  // Railway puts the generated public host name of the service in RAILWAY_PUBLIC_DOMAIN. Using it as
+  // the default makes a deploy there need no address setting; an explicit QUITADO_BASE_URL wins.
+  const railwayDomain = get('RAILWAY_PUBLIC_DOMAIN');
+  const baseUrlRaw =
+    get('QUITADO_BASE_URL') ??
+    (railwayDomain ? `https://${railwayDomain}` : `http://localhost:${port}`);
   let baseUrl = baseUrlRaw.replace(/\/+$/, '');
   try {
     const parsed = new URL(baseUrl);
@@ -171,7 +176,9 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (commitmentRaw === 'confirmed' || commitmentRaw === 'finalized') commitment = commitmentRaw;
   else problems.push('QUITADO_COMMITMENT must be "confirmed" or "finalized"');
 
-  const trustProxyRaw = get('QUITADO_TRUST_PROXY') ?? 'false';
+  // Behind Railway's own proxy the real client address is in X-Forwarded-For, and the container is
+  // not reachable any other way, so it is trusted by default there (and only there).
+  const trustProxyRaw = get('QUITADO_TRUST_PROXY') ?? (railwayDomain ? 'true' : 'false');
   if (trustProxyRaw !== 'true' && trustProxyRaw !== 'false') {
     problems.push('QUITADO_TRUST_PROXY must be "true" or "false"');
   }
