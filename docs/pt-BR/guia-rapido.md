@@ -65,7 +65,7 @@ O programa avisa, ao iniciar, se algo importante estiver faltando (por exemplo, 
 
 1. Abra o endereço que você configurou e vá para `/admin`.
 2. Digite a senha (`QUITADO_ACCESS_SECRET`).
-3. Clique em **New invoice**, preencha cliente, descrição, token (USDC ou USDT), valor e
+3. Clique em **Nova fatura**, preencha cliente, descrição, token (USDC ou USDT), valor e
    vencimento.
 4. Copie o **link de pagamento** e mande para o cliente.
 
@@ -116,7 +116,7 @@ Guarde essas cópias **fora do servidor**.
 
 ## Estatísticas
 
-Em **Stats** (`/admin/stats`) você vê quantas faturas emitiu, pagas, abertas e vencidas, o total
+Em **Estatísticas** (`/admin/stats`) você vê quantas faturas emitiu, pagas, abertas e vencidas, o total
 recebido por token e os pagamentos por mês. Tudo é calculado no seu próprio banco. O Quitado não envia
 nenhuma informação para fora.
 

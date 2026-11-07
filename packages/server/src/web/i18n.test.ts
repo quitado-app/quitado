@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { LANGS, messages, pickLang, t } from './i18n.ts';
+import { formError, LANGS, messages, pickLang, t } from './i18n.ts';
+
+describe('formError', () => {
+  it('shows the core message as written in English, with a capital letter', () => {
+    expect(formError('en', 'client name is required')).toBe('Client name is required');
+    expect(formError('en', 'invalid amount: "abc"')).toBe('Invalid amount: "abc"');
+  });
+
+  it('translates what the owner can get wrong in Portuguese, and leaves the rest as it is', () => {
+    expect(formError('pt-BR', 'too many decimal places (max 6): 1.1234567')).toBe(
+      'Casas decimais demais: o máximo permitido é 6.',
+    );
+    expect(formError('pt-BR', 'unsupported asset: XYZ')).toBe('Este token não é aceito.');
+    expect(formError('pt-BR', 'something the core said later')).toBe(
+      'Something the core said later',
+    );
+  });
+});
 
 describe('pickLang', () => {
   it('defaults to English', () => {
