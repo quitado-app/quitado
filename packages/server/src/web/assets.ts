@@ -35,7 +35,26 @@ export const APP_CSS = `
     --bad-bg: #381614;
   }
 }
+:root {
+  /* The border of a field must stand out from the card around it (3:1), unlike the hairlines that
+     only separate things. */
+  --field-line: color-mix(in srgb, var(--muted) 75%, var(--card));
+}
 * { box-sizing: border-box; }
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.skip {
+  position: absolute; left: 16px; top: -100px; z-index: 10; padding: 10px 16px; border-radius: 8px;
+  background: var(--card); color: var(--text); border: 1px solid var(--field-line); font-weight: 600;
+}
+.skip:focus-visible { top: 12px; }
 body {
   margin: 0;
   background: var(--bg);
@@ -47,7 +66,9 @@ header.top {
   display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
   margin-bottom: 24px;
 }
-header.top nav { display: flex; gap: 16px; align-items: center; }
+header.top nav { display: flex; flex-wrap: wrap; gap: 0 16px; align-items: center; }
+header.top nav a, header.top nav button.link { display: inline-flex; align-items: center; min-height: 44px; }
+header.top nav a[aria-current="page"] { color: var(--text); font-weight: 700; text-decoration: none; }
 .brand { font-weight: 700; letter-spacing: 0.01em; }
 a { color: var(--accent); }
 h1 { font-size: 1.6rem; margin: 0 0 8px; }
@@ -57,7 +78,7 @@ h2 { font-size: 1.1rem; margin: 24px 0 8px; }
   padding: 20px; margin-bottom: 16px;
 }
 .muted { color: var(--muted); }
-.amount { font-size: 2rem; font-weight: 700; }
+.amount { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .row { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 8px 0; }
 .row > div { min-width: 140px; }
 .label { display: block; font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
@@ -81,14 +102,14 @@ button.link { background: none; border: none; padding: 0; color: var(--accent); 
 form.inline { display: inline; }
 label { display: block; font-weight: 600; margin: 14px 0 4px; }
 input, select, textarea {
-  width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
+  width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--field-line);
   background: var(--bg); color: var(--text); font: inherit;
 }
 textarea { min-height: 90px; resize: vertical; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-td.num, th.num { text-align: right; white-space: nowrap; }
+td.num, th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 td.nowrap { white-space: nowrap; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
 .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
@@ -106,6 +127,12 @@ details.more[open] summary { padding-bottom: 4px; }
 ol { padding-left: 22px; margin: 4px 0 12px; }
 li { margin: 4px 0; }
 .table-scroll { overflow-x: auto; }
+@media (prefers-contrast: more) {
+  :root { --line: color-mix(in srgb, var(--text) 55%, var(--bg)); --muted: color-mix(in srgb, var(--text) 80%, var(--bg)); }
+}
+@media (forced-colors: active) {
+  .chip, .banner, .error { border: 1px solid CanvasText; }
+}
 /* The invoice list, one block per invoice on a phone: who and how it stands, what for, how much and
    by when, then the link to open it. The header row is hidden visually but kept for screen readers. */
 @media (max-width: 640px) {
@@ -145,8 +172,15 @@ export const APP_JS = `
     const original = target.textContent;
     try {
       await navigator.clipboard.writeText(target.getAttribute('data-copy') || '');
-      target.textContent = target.getAttribute('data-copied') || 'Copied';
-      setTimeout(() => { target.textContent = original; }, 1500);
+      const copied = target.getAttribute('data-copied') || 'Copied';
+      target.textContent = copied;
+      // The button label changes under the reader's finger; this says it out loud as well.
+      const live = document.getElementById('live-status');
+      if (live) live.textContent = copied;
+      setTimeout(() => {
+        target.textContent = original;
+        if (live) live.textContent = '';
+      }, 1500);
     } catch (error) {
       // Clipboard not available (for example plain http): the text stays selectable.
     }

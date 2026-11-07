@@ -219,7 +219,7 @@ Softly squared. Cards, tiles and the QR tile use a 12px radius; buttons, fields 
 - **Primary:** Signal Blue fill, on-signal text, 10px by 18px padding, weight 600, about 46px tall. It is the single most prominent action on a screen.
 - **Secondary:** transparent fill, Signal Blue text and border.
 - **Link button:** no fill, no border, blue underlined text, weight 400; used for low-stakes inline actions such as sign out.
-- **Hover / Focus:** not styled beyond the browser default today; focus visibility relies on the browser outline.
+- **Focus:** every link, button, field and summary shows a 3px outline in the action colour, 2px off the element, on keyboard focus (:focus-visible). The colour keeps at least 3:1 against the canvas and the card in both themes.
 
 ### Chips
 
@@ -237,12 +237,12 @@ Softly squared. Cards, tiles and the QR tile use a 12px radius; buttons, fields 
 ### Inputs / Fields
 
 - **Style:** full width, 1px Hairline border, 8px radius, Canvas fill, inherited font, 10px by 12px padding. Labels sit above the field in weight 600.
-- **Focus:** browser default today.
+- **Border:** the border of a field is --field-line, a mix of Ink Muted into the card (3:1 or more against the card and the canvas, in both themes), not the Hairline, which only separates things. **Focus:** the same 3px action-colour outline as every control.
 - **Error / Disabled:** errors appear as a red banner above the form, not beside the field.
 
 ### Navigation
 
-- A plain row of text links in Signal Blue at the top right of the header, 16px apart, next to a bold wordmark. There is no menu and no mobile variant: the row wraps.
+- A plain row of text links in Signal Blue at the top right of the header, 16px apart, next to a bold wordmark. There is no menu and no mobile variant: the row wraps. Each link is at least 44px tall, and the one for the page being shown is bold, in Ink, and carries ria-current=" page\.
 
 ### Payment Tile (signature)
 

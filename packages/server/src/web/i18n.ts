@@ -9,6 +9,8 @@ const en = {
   siteFooter: 'Open-source, non-custodial invoicing on Solana.',
   devnetBanner: 'Test network (devnet): no real money is involved.',
   languageLabel: 'Language',
+  skipToContent: 'Skip to the content',
+  ownerMenu: 'Owner menu',
   pageTitle: 'Invoice {amount} from {issuer}',
 
   statusOpen: 'Open',
@@ -161,6 +163,8 @@ const ptBR: Record<MessageKey, string> = {
   siteFooter: 'Cobrança de código aberto, sem custódia, na Solana.',
   devnetBanner: 'Rede de teste (devnet): nenhum dinheiro real está envolvido.',
   languageLabel: 'Idioma',
+  skipToContent: 'Ir para o conteúdo',
+  ownerMenu: 'Menu do dono',
   pageTitle: 'Fatura de {amount} de {issuer}',
 
   statusOpen: 'Em aberto',

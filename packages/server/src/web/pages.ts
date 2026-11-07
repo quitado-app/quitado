@@ -25,18 +25,21 @@ function layout(options: {
   lang?: Lang;
   /** Added to the owner's navigation links; see PageContext. */
   langQuery?: string;
+  /** The owner menu entry for the page being shown, marked with aria-current. */
+  current?: 'invoices' | 'new' | 'stats';
   /** The language switch, shown next to the owner navigation or on its own on public pages. */
   switcher?: Raw;
 }): string {
   const lang = options.lang ?? 'en';
   const q = options.langQuery ?? '';
+  const here = (entry: string) => (options.current === entry ? raw('aria-current="page"') : '');
   const banner =
     options.cluster === 'devnet' ? html`<div class="banner">${t(lang, 'devnetBanner')}</div>` : '';
   const nav = options.admin
-    ? html`<nav aria-label="Quitado">
-        <a href="/admin${q}">${t(lang, 'navInvoices')}</a>
-        <a href="/admin/invoices/new${q}">${t(lang, 'navNewInvoice')}</a>
-        <a href="/admin/stats${q}">${t(lang, 'navStats')}</a>
+    ? html`<nav aria-label="${t(lang, 'ownerMenu')}">
+        <a href="/admin${q}" ${here('invoices')}>${t(lang, 'navInvoices')}</a>
+        <a href="/admin/invoices/new${q}" ${here('new')}>${t(lang, 'navNewInvoice')}</a>
+        <a href="/admin/stats${q}" ${here('stats')}>${t(lang, 'navStats')}</a>
         <form class="inline" method="post" action="/admin/logout${q}">
           <button class="link" type="submit">${t(lang, 'navSignOut')}</button>
         </form>
@@ -53,14 +56,16 @@ function layout(options: {
         <link rel="stylesheet" href="/static/app.css" />
       </head>
       <body>
+        <a class="skip" href="#main">${t(lang, 'skipToContent')}</a>
         <div class="wrap">
           <header class="top">
             <span class="brand">Quitado</span>
             ${nav} ${options.switcher ?? ''}
           </header>
-          ${banner} ${options.body}
+          <main id="main" tabindex="-1">${banner} ${options.body}</main>
           <footer>${t(lang, 'siteFooter')}</footer>
         </div>
+        <span class="sr-only" id="live-status" role="status" aria-live="polite"></span>
         <script src="/static/app.js" defer></script>
       </body>
     </html>`.value;
@@ -129,6 +134,7 @@ export function dashboardPage(ctx: PageContext, invoices: readonly Invoice[]): s
     title: `${m('invoicesTitle')} · Quitado`,
     cluster: ctx.cluster,
     admin: true,
+    current: 'invoices',
     lang,
     langQuery: ctx.langQuery,
     switcher: languageSwitch(lang, '/admin'),
@@ -192,6 +198,7 @@ export function newInvoicePage(
     title: `${m('newInvoiceTitle')} · Quitado`,
     cluster: ctx.cluster,
     admin: true,
+    current: 'new',
     lang,
     langQuery: ctx.langQuery,
     switcher: languageSwitch(lang, '/admin/invoices/new'),
@@ -246,6 +253,7 @@ export function invoiceDetailPage(ctx: PageContext, invoice: Invoice, payUrl: st
     title: `${title} · Quitado`,
     cluster: ctx.cluster,
     admin: true,
+    current: 'invoices',
     lang,
     langQuery: ctx.langQuery,
     switcher: languageSwitch(lang, `/admin/invoices/${invoice.id}`),
@@ -526,6 +534,7 @@ export function statsPage(ctx: PageContext, stats: InvoiceStats): string {
     title: `${m('statsTitle')} · Quitado`,
     cluster: ctx.cluster,
     admin: true,
+    current: 'stats',
     lang,
     langQuery: ctx.langQuery,
     switcher: languageSwitch(lang, '/admin/stats'),
