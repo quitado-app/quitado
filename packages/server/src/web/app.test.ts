@@ -221,6 +221,10 @@ describe('web app', () => {
         expect(en.body.split(tag).length, tag).toBe(pt.body.split(tag).length);
       }
       expect(en.body).toContain('planned and do not exist yet');
+      // Both languages offer the one-click Railway deploy.
+      for (const page of [en, pt]) {
+        expect(page.body).toContain('href="https://railway.com/deploy/quitado"');
+      }
       expect(pt.body).toContain('estão planejados e ainda não existem');
       expect(pt.body).toContain('Ele não é nota fiscal'); // the receipt is not a tax document
       // No customers, numbers or testimonials exist, so none may appear.

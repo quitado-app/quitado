@@ -6,6 +6,10 @@ Open-source, non-custodial USDC/USDT invoicing on Solana for Brazilian freelance
 > and the web app work and are tested (including against a real devnet). The Brazilian
 > tax layer (exchange-rate references and accountant exports) is still being built.
 
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/quitado)
+
+You can run your own instance on Railway with one click, or on any server with Docker (see below).
+
 ## What it is
 
 You create an invoice, send your client a link, and the client pays from any Solana wallet by

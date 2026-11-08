@@ -85,6 +85,7 @@ interface Copy {
     copy: string;
     copied: string;
     guide: Link;
+    railway: { note: string; link: Link };
   };
   faq: { heading: string; items: { q: string; a: string }[] };
   footer: { meaning: string; license: string; links: Link[] };
@@ -230,6 +231,10 @@ const en: Copy = {
     copy: 'Copy',
     copied: 'Copied',
     guide: { label: 'Read the guide and run your own', href: `${DOCS}/deploy.md` },
+    railway: {
+      note: 'Prefer not to manage a server? Deploy your own instance on Railway in a few clicks: you only fill in your wallet address and an RPC URL, and the access secret is generated for you.',
+      link: { label: 'Deploy on Railway', href: 'https://railway.com/deploy/quitado' },
+    },
   },
   faq: {
     heading: 'Questions',
@@ -415,6 +420,10 @@ const ptBR: Copy = {
     copy: 'Copiar',
     copied: 'Copiado',
     guide: { label: 'Ler o guia e rodar o seu', href: `${DOCS}/pt-BR/guia-rapido.md` },
+    railway: {
+      note: 'Prefere não mexer em servidor? Suba a sua própria instância na Railway em poucos cliques: você só informa o endereço da sua carteira e uma URL de RPC, e a senha de acesso é gerada para você.',
+      link: { label: 'Subir na Railway', href: 'https://railway.com/deploy/quitado' },
+    },
   },
   faq: {
     heading: 'Perguntas',
@@ -666,7 +675,11 @@ export function landingPage(ctx: LandingContext): string {
                   </button>
                 </div>
               </div>
-              <p class="run-action">${external(c.run.guide, 'button button-lg')}</p>
+              <p class="muted run-note">${c.run.railway.note}</p>
+              <div class="actions run-action">
+                ${external(c.run.guide, 'button button-lg')}
+                ${external(c.run.railway.link, 'button button-lg secondary')}
+              </div>
             </section>
 
             <section class="section faq" id="faq" aria-labelledby="faq-title">

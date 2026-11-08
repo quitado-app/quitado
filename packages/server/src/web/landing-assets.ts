@@ -263,7 +263,8 @@ html {
   overflow-x: auto; white-space: pre; word-break: normal; line-height: 1.7;
 }
 .command p { margin: 0 0 14px; font-size: 0.95rem; }
-.run-action { margin: 32px 0 0; }
+.run-note { max-width: var(--measure); margin: 28px 0 0; }
+.run-action { margin-top: 16px; }
 
 .faq { max-width: 46em; }
 .faq details { border-top: 1px solid var(--line); }
