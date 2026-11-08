@@ -11,6 +11,22 @@ ela cuida do resto.
 O dinheiro vai **direto para a sua carteira**. O Quitado nunca guarda seus fundos nem suas chaves, e
 cada instância tem um único dono: você.
 
+## O caminho mais curto: o botão
+
+1. Clique em **Deploy on Railway**: <https://railway.com/deploy/quitado>. Entre na Railway com o seu GitHub.
+2. Preencha as duas coisas que a Railway pede e clique em **Deploy**:
+   - `QUITADO_RECIPIENT`: o endereço público da **sua** carteira Solana.
+   - `QUITADO_RPC_URL`: a URL de RPC da mainnet (veja o item 3 logo abaixo).
+     `QUITADO_OWNER_NAME` é opcional: seu nome ou o do seu negócio, que aparece como "De" nas faturas.
+3. Quando o deploy ficar verde (**Active**), abra o serviço e copie o endereço público. A senha de acesso foi
+   gerada sozinha: ela está em **Variables**, em `QUITADO_ACCESS_SECRET`.
+4. Abra `https://SEU-ENDERECO.up.railway.app/admin`, entre com essa senha e faça o primeiro teste com
+   1 USDC (passo 6 mais abaixo).
+
+Com o botão, o volume `/data`, a verificação de saúde e o endereço público já vêm configurados. Tenha
+em mãos a carteira e a URL de RPC (o item "O que você precisa antes"). Se preferir fazer à mão, ou se algo
+sair diferente, siga o passo a passo completo abaixo.
+
 ## O que você precisa antes (uns 10 minutos)
 
 1. **Uma carteira Solana sua** (Phantom, Solflare, Backpack ou outra). Copie o **endereço público**
@@ -115,8 +131,9 @@ pessoa.
 - **Endereço próprio.** Se quiser um endereço seu (por exemplo `pagar.seudominio.com`), adicione-o em
   **Settings**, **Networking**, **Custom Domain**, crie os registros que a Railway mostrar no seu
   provedor de domínio e defina `QUITADO_BASE_URL` com o endereço novo, começando por `https://`.
-- **Atualizar.** No GitHub, sincronize o seu fork (**Sync fork**). A Railway publica a nova versão
-  sozinha.
+- **Atualizar.** Se você usou o passo a passo com fork, sincronize o fork no GitHub (**Sync fork**) e a
+  Railway publica a nova versão sozinha. Se você usou o botão, veja em **Settings**, **Source**, de onde o
+  serviço recebe as atualizações.
 - **Imposto e conversão.** O Quitado não converte para reais nem emite nota fiscal. Converse com o seu
   contador sobre como declarar o que você recebe.
 - **Encontrou algo estranho?** Veja [SECURITY.md](../../SECURITY.md) para falhas de segurança, e não
@@ -124,5 +141,4 @@ pessoa.
 
 ## Para quem mantém o projeto
 
-Existe uma especificação para criar um template da Railway com tudo isso já preenchido, para virar um
-botão "Deploy on Railway": [railway-template.md](../railway-template.md).
+O template do botão está descrito em [railway-template.md](../railway-template.md).
