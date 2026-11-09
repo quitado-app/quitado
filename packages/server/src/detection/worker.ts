@@ -106,6 +106,8 @@ export function createPaymentWorker(options: WorkerOptions): PaymentWorker {
           // One transaction cannot pay two invoices, and a paid invoice stays with its first
           // payment. Surface it for the owner to resolve; never overwrite or ignore silently.
           summary.conflicts += 1;
+          // Judged once: without this it would be fetched and reported again on every poll, forever.
+          rejected.add(found.signature);
           onEvent({
             type: 'conflict',
             invoiceId: invoice.id,

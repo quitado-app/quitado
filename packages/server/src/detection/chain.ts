@@ -39,6 +39,14 @@ export function createKitChainReader(
       // (each key carries source: 'lookupTable' | 'transaction'), so a wallet may put the reference there.
       const accountKeys = tx.transaction.message.accountKeys.map((key) => key.pubkey);
 
+      // A finished transaction always carries both lists. With only one of them, "the recipient's
+      // balance before" would read as zero and its whole balance as received: treat it as unknown, so
+      // it is looked at again instead of being judged on half the facts.
+      const failed = meta.err !== null && meta.err !== undefined;
+      if (!failed && (meta.preTokenBalances == null) !== (meta.postTokenBalances == null)) {
+        return null;
+      }
+
       const balances = (list: typeof meta.preTokenBalances): TokenBalance[] => {
         const result: TokenBalance[] = [];
         for (const balance of list ?? []) {

@@ -20,6 +20,10 @@ updates:
       - dependency-name: '@solana/keys'
       - dependency-name: '@solana/kit-plugin-*'
       - dependency-name: '@solana-program/*'
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
   - package-ecosystem: github-actions
     directory: /
     schedule:

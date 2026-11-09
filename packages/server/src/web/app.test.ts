@@ -529,6 +529,21 @@ describe('web app', () => {
       expect(text).not.toContain('Pay to');
     });
 
+    it('opens even when the description has an emoji where the wallet message is cut', async () => {
+      const cookie = await login();
+      // The emoji is a pair of UTF-16 units at positions 99 and 100: cutting at 100 splits it.
+      const id = await createInvoiceViaForm(cookie, {
+        description: `${'x'.repeat(99)}\u{1F600} and a long tail`,
+      });
+      const page = await call(`/pay/${id}`);
+      expect(page.status).toBe(200);
+      expect(errors).toEqual([]);
+      const link = /href="(solana:[^"]+)"/.exec(page.body)?.[1] ?? '';
+      expect(decodeURIComponent(link.replaceAll('&amp;', '&'))).toContain(
+        `message=${'x'.repeat(99)}\u{1F600}`,
+      );
+    });
+
     describe('language', () => {
       const portuguese = { 'accept-language': 'pt-BR,pt;q=0.9,en;q=0.8' };
       const collapse = (text: string) => text.replace(/\s+/g, ' ');

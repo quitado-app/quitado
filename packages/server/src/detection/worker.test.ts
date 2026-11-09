@@ -187,6 +187,27 @@ describe('payment worker', () => {
     });
   });
 
+  it('reports a conflict once, not on every poll', async () => {
+    store.insert(invoice(0));
+    store.insert(invoice(1));
+    const shared = paymentTx('shared', 10_000_000n, {
+      accountKeys: [PAYER, 'payer-ata', 'recipient-ata', RECIPIENT, REFS[0], REFS[1]],
+    });
+    chain.add(REFS[0], shared);
+    chain.add(REFS[1], shared);
+    const poller = worker({ concurrency: 1 });
+
+    expect((await poller.pollOnce()).conflicts).toBe(1);
+    expect((await poller.pollOnce()).conflicts).toBe(0);
+    expect((await poller.pollOnce()).conflicts).toBe(0);
+    expect(events.filter((event) => event.type === 'conflict')).toHaveLength(1);
+    // The invoice is still open, and a real payment of its own is still found.
+    expect(store.get('inv_1')?.status).toBe('open');
+    chain.add(REFS[1], pay('own', REFS[1], 10_000_000n));
+    expect((await poller.pollOnce()).settled).toBe(1);
+    expect(store.get('inv_1')?.payment?.signature).toBe('own');
+  });
+
   it('limits how many invoices it examines at once', async () => {
     for (let n = 0; n < 3; n++) store.insert(invoice(n));
     let active = 0;
