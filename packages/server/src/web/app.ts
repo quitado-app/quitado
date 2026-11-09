@@ -411,7 +411,8 @@ export function createWebServer(deps: AppDeps): Server {
           mint: invoice.asset.mint,
           reference: invoice.reference,
           ...(config.ownerName ? { label: config.ownerName } : {}),
-          message: invoice.description.slice(0, 100),
+          // Cut by code points: slice() could split an emoji in two, and encodeURIComponent throws on half of one.
+          message: [...invoice.description].slice(0, 100).join(''),
         });
         send(
           ctx,

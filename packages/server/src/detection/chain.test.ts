@@ -159,6 +159,44 @@ describe('createKitChainReader', () => {
     });
   });
 
+  it('does not judge a successful transaction that carries only one of the two balance lists', async () => {
+    const after = [tokenBalance(2, RECIPIENT, '17000000')];
+    for (const lists of [
+      { preTokenBalances: undefined, postTokenBalances: after },
+      { preTokenBalances: null, postTokenBalances: after },
+      { preTokenBalances: after, postTokenBalances: undefined },
+    ]) {
+      const { rpc } = fakeRpc({
+        transaction: {
+          blockTime: 1n,
+          meta: { err: null, ...lists },
+          transaction: { message: { accountKeys: [] } },
+        },
+      });
+      expect(
+        await createKitChainReader(rpc).getTransaction(SIGNATURE, { commitment: 'finalized' }),
+      ).toBeNull();
+    }
+  });
+
+  it('still reads a successful transaction whose two lists are both empty or both missing', async () => {
+    for (const lists of [
+      { preTokenBalances: [], postTokenBalances: [] },
+      { preTokenBalances: undefined, postTokenBalances: undefined },
+    ]) {
+      const { rpc } = fakeRpc({
+        transaction: {
+          blockTime: 1n,
+          meta: { err: null, ...lists },
+          transaction: { message: { accountKeys: [] } },
+        },
+      });
+      expect(
+        await createKitChainReader(rpc).getTransaction(SIGNATURE, { commitment: 'finalized' }),
+      ).toMatchObject({ preTokenBalances: [], postTokenBalances: [] });
+    }
+  });
+
   it('rejects a malformed signature or address before calling the node', async () => {
     const { rpc, calls } = fakeRpc({ signatures: [] });
     const chain = createKitChainReader(rpc);
