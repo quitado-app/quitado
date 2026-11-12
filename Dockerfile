@@ -5,7 +5,7 @@
 #
 # The base image is pinned to an exact Node version on purpose: builds are reproducible and an
 # upgrade is a visible change. node:sqlite is built into Node, so there is no native module to compile.
-ARG NODE_IMAGE=node:24.19.0-slim
+ARG NODE_IMAGE=node:24.22.3-slim
 
 # ---- build: compile TypeScript with the dev dependencies ----------------------------------------
 FROM ${NODE_IMAGE} AS build
