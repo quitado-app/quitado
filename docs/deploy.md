@@ -82,6 +82,9 @@ somewhere else. To restore, stop the app, put the file at `QUITADO_DB_PATH` and 
   That is a property of the tokens, not of Quitado, and nothing in a non-custodial app can prevent it.
 - **Quitado never holds your funds or keys,** but you are responsible for the wallet that receives
   them and for the `.env` file and the access secret.
+- **Do not set up a private balance on the receiving wallet.** Quitado sees payments by the public balance of
+  `QUITADO_RECIPIENT`. A private send to an address with a private balance (for example Solflare's Private
+  Mode) would not be seen, and the invoice would stay open. See [payment-detection.md](./payment-detection.md).
 - **A payment smaller than the invoice does not settle it,** and two partial payments are not added
   together. The customer has to pay the full amount.
 - **Receipts are not tax documents.** See [receipts.md](./receipts.md).

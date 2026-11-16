@@ -96,6 +96,10 @@ transação e um link para conferi-la. O recibo **não é nota fiscal**.
 
 ## Coisas que vale saber
 
+- **Não ative o saldo privado na carteira que recebe as faturas.** O Quitado reconhece o pagamento pelo saldo
+  **público** do endereço em `QUITADO_RECIPIENT`. Um envio privado para um endereço com saldo privado (por
+  exemplo, o Modo Privado da Solflare) não seria visto, e a fatura ficaria aberta mesmo paga. Peça também que o
+  cliente pague do saldo comum da carteira, que é o que o botão **Abrir na carteira** faz.
 - **O pagamento precisa ser do valor total.** Um pagamento menor que a fatura não a quita, e dois
   pagamentos parciais não são somados.
 - **Quem paga a mais** quita a fatura, e o valor realmente recebido fica registrado.

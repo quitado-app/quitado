@@ -529,6 +529,13 @@ describe('web app', () => {
       expect(text).not.toContain('Pay to');
     });
 
+    it('asks the payer to pay from the regular balance, not a private one, in both languages', async () => {
+      const en = (await call(`/pay/${id}?lang=en`)).body.replace(/\s+/g, ' ');
+      expect(en).toContain('from your wallet’s regular balance and not from a private one');
+      const pt = (await call(`/pay/${id}?lang=pt-BR`)).body.replace(/\s+/g, ' ');
+      expect(pt).toContain('a partir do saldo comum da sua carteira e não de um saldo privado');
+    });
+
     it('opens even when the description has an emoji where the wallet message is cut', async () => {
       const cookie = await login();
       // The emoji is a pair of UTF-16 units at positions 99 and 100: cutting at 100 splits it.
