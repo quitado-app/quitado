@@ -27,7 +27,7 @@ const en = {
   payHeading: 'Pay with a Solana wallet',
   openInWallet: 'Open in wallet',
   payNote:
-    'Pay with this button or the QR code. A payment typed in by hand to the address below does not mark this invoice as paid.',
+    'Pay with this button or the QR code, from your wallet’s regular balance and not from a private one. A payment typed in by hand to the address below does not mark this invoice as paid.',
   waiting: 'Waiting for your payment. This page updates by itself, usually within a minute.',
   detected: 'Payment received. Updating the page…',
   qrSummary: 'Pay from another device: show the QR code',
@@ -181,7 +181,7 @@ const ptBR: Record<MessageKey, string> = {
   payHeading: 'Pague com uma carteira Solana',
   openInWallet: 'Abrir na carteira',
   payNote:
-    'Pague com este botão ou com o QR code. Um pagamento digitado à mão para o endereço abaixo não marca esta fatura como paga.',
+    'Pague com este botão ou com o QR code, a partir do saldo comum da sua carteira e não de um saldo privado. Um pagamento digitado à mão para o endereço abaixo não marca esta fatura como paga.',
   waiting:
     'Aguardando o seu pagamento. Esta página se atualiza sozinha, em geral em menos de um minuto.',
   detected: 'Pagamento recebido. Atualizando a página…',

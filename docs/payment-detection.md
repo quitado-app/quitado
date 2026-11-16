@@ -53,6 +53,15 @@ The spike ([spike-devnet.md](./spike-devnet.md)) showed two problems with `@sola
 - **Spam is bounded.** At most 500 candidates are examined per reference; beyond that the worker
   emits a `truncated` event instead of looping forever. Rejected transactions are remembered, so
   they are not fetched again on later polls.
+- **Private transfers are not seen.** The check reads the recipient's _public_ token balance. Some wallets
+  now offer a private balance (Solflare's Private Mode, November 2026: opt-in, a second balance in the same
+  wallet). A private send to a recipient address that has set one up lands in an encrypted note and not in the
+  public balance, so the invoice stays open although it was paid. A payment moved out of a private balance to
+  the public address may not cite the invoice reference, and is then like a hand-typed transfer. Two rules
+  follow: do not set up a private balance on the address in `QUITADO_RECIPIENT` (the registry record that
+  makes it possible is permanent), and ask payers to pay from their regular balance, which is what the
+  "Open in wallet" button does. Whether a wallet's Solana Pay sheet can pay from a private balance was not
+  verified.
 - **Token balances need an `owner` field** in the RPC response; entries without one are ignored.
 - **Whoever pays is recorded as the payer** only as "the owner whose balance of the token dropped
   the most". It is informational: the invoice settles whoever pays it.
