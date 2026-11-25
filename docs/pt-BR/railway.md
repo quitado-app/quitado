@@ -18,8 +18,9 @@ cada instância tem um único dono: você.
    - `QUITADO_RECIPIENT`: o endereço público da **sua** carteira Solana.
    - `QUITADO_RPC_URL`: a URL de RPC da mainnet (veja o item 3 logo abaixo).
      `QUITADO_OWNER_NAME` é opcional: seu nome ou o do seu negócio, que aparece como "De" nas faturas.
-3. Quando o deploy ficar verde (**Active**), abra o serviço e copie o endereço público. A senha de acesso foi
-   gerada sozinha: ela está em **Variables**, em `QUITADO_ACCESS_SECRET`.
+3. Quando o deploy ficar verde (**Active**), clique no serviço e copie o endereço público: ele aparece
+   no topo do serviço ou em **Settings**, **Networking**, e termina em `.up.railway.app`. A senha de
+   acesso foi gerada sozinha: ela está em **Variables**, em `QUITADO_ACCESS_SECRET`.
 4. Abra `https://SEU-ENDERECO.up.railway.app/admin`, entre com essa senha e faça o primeiro teste com
    1 USDC (passo 6 mais abaixo).
 
@@ -32,15 +33,18 @@ sair diferente, siga o passo a passo completo abaixo.
 1. **Uma carteira Solana sua** (Phantom, Solflare, Backpack ou outra). Copie o **endereço público**
    dela. Nunca informe a frase de recuperação nem a chave privada a ninguém, nem aqui.
    Receba antes um valor bem pequeno de **USDC** e de **USDT** nessa carteira: algumas carteiras não
-   conseguem pagar um endereço que nunca recebeu aquele token.
+   conseguem pagar um endereço que nunca recebeu aquele token. Se você ainda não tem esses tokens,
+   compre ou receba em uma corretora e envie para o endereço da sua carteira (na rede **Solana**).
+   Você também vai precisar de uma **segunda carteira** com um pouco de USDC para fazer o teste do
+   passo 6 (pode ser a de um amigo).
 2. **Uma conta na Railway**, entrando com o seu GitHub: <https://railway.com>
 3. **Uma URL de RPC da Solana.** O RPC é o serviço que dá ao seu Quitado acesso à rede para ver se o
    pagamento chegou. O público e gratuito é limitado demais para uso real. Crie uma conta gratuita em
    um provedor de RPC (por exemplo, a Helius), crie uma chave e copie a **URL da mainnet**. Essa URL
    contém a sua chave: trate como senha e não compartilhe.
-4. **Uma cópia (fork) do Quitado na sua conta do GitHub.** Abra
-   <https://github.com/quitado-app/quitado> e clique em **Fork**. A Railway vai publicar a partir da
-   sua cópia.
+4. **Uma cópia (fork) do Quitado na sua conta do GitHub.** **Só para o passo a passo completo; com o
+   botão você não precisa disso.** Abra <https://github.com/quitado-app/quitado> e clique em **Fork**.
+   A Railway vai publicar a partir da sua cópia.
 
 ## Passo 1: criar o projeto
 
@@ -104,7 +108,9 @@ Quitado está no ar.
 2. Clique em **Nova fatura**: cliente, descrição, token (USDC ou USDT), valor e vencimento.
    **Use 1 USDC no primeiro teste.**
 3. Copie o **link de pagamento** e abra no celular.
-4. Pague **de outra carteira**, tocando em **Abrir na carteira** ou escaneando o QR code.
+4. Pague **de outra carteira**, tocando em **Abrir na carteira** ou escaneando o QR code, a partir do
+   saldo comum da carteira (não de um saldo privado). **Não vale** sacar de uma corretora para o endereço
+   digitado à mão: só o botão e o QR code marcam a fatura como paga.
 5. Espere de 15 a 40 segundos: a página se atualiza sozinha para **Paga**, e o recibo em PDF fica
    disponível.
 
@@ -134,10 +140,20 @@ pessoa.
 - **Atualizar.** Se você usou o passo a passo com fork, sincronize o fork no GitHub (**Sync fork**) e a
   Railway publica a nova versão sozinha. Se você usou o botão, veja em **Settings**, **Source**, de onde o
   serviço recebe as atualizações.
+- **Saldo privado.** Não ative o saldo privado de uma carteira (como o Modo Privado da Solflare) no
+  endereço que recebe as faturas: o Quitado só enxerga o saldo público, e um pagamento privado deixaria
+  a fatura aberta mesmo paga.
 - **Imposto e conversão.** O Quitado não converte para reais nem emite nota fiscal. Converse com o seu
   contador sobre como declarar o que você recebe.
 - **Encontrou algo estranho?** Veja [SECURITY.md](../../SECURITY.md) para falhas de segurança, e não
   abra um issue público.
+
+## Travou em algum ponto?
+
+Estamos procurando exatamente isso: onde as pessoas travam. Se algo não estava claro ou não funcionou,
+abra um [issue no GitHub](https://github.com/quitado-app/quitado/issues) (sem colocar senha, URL de
+RPC nem dados de clientes) ou conte para quem te indicou o Quitado. Falha de segurança: veja o item
+acima, e não use o issue público.
 
 ## Para quem mantém o projeto
 
