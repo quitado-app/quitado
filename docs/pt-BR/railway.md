@@ -81,11 +81,15 @@ Entre em <https://railway.com> com o seu GitHub. Valores vistos em novembro de 2
 
 ### O teste, do começo ao fim
 
-1. Clique no botão da Railway e faça o deploy (próxima seção).
-2. Abra o endereço da sua instância e entre em `/admin` com a senha de acesso.
-3. Crie uma fatura de **1 USDC**.
-4. Abra o link de pagamento no celular e pague **da segunda carteira**, com **Abrir na carteira** ou o
-   QR code.
+1. Clique no botão da Railway e faça o deploy (veja **O caminho mais curto: o botão**, logo abaixo).
+2. Quando o deploy ficar verde (**Active**), abra o endereço público da sua instância e acrescente
+   `/admin` no final, por exemplo `https://SEU-ENDERECO.up.railway.app/admin`. Entre com a senha de
+   acesso. É essa a tela de administração do Quitado, onde você cria as faturas.
+3. **No painel**, clique em **Nova fatura**, preencha cliente, descrição, token **USDC**, valor **1** e
+   vencimento, e clique em **Criar fatura**. Os detalhes estão no
+   [Passo 6](#passo-6-entrar-e-fazer-o-primeiro-teste).
+4. Copie o **link de pagamento** que aparece, abra no celular e pague **da segunda carteira**, com
+   **Abrir na carteira** ou o QR code.
 5. Espere até uns 40 segundos: a fatura deve aparecer como **Paga**.
 6. Baixe o **recibo em PDF**.
 
