@@ -4,6 +4,11 @@ Este guia leva você de zero até uma instância sua do Quitado no ar, sem preci
 Railway é um serviço que roda programas na nuvem: você aponta para o código, define alguns valores e
 ela cuida do resto.
 
+**Como as peças se encaixam:** o Quitado é um **aplicativo web de cobrança**. É ele que você sobe na
+Railway, e é ele que cria os links de pagamento e as páginas que o seu cliente vê. A **Helius**, mais
+abaixo, não é um servidor que você roda: é um serviço de **RPC**, a "janela" que o Quitado usa para
+olhar a blockchain da Solana e ver se o pagamento chegou. Você só cria uma conta lá e copia uma chave.
+
 > **Atenção:** o Quitado está em estágio inicial e ainda não é recomendado para uso em produção.
 > Comece com valores pequenos, como 1 USDC. A Railway tem seus próprios planos e preços: veja no site
 > deles antes de começar.
