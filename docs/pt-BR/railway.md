@@ -51,7 +51,10 @@ público e gratuito é limitado demais, então crie uma conta em um provedor. Es
 **Helius**, vistas em novembro de 2026 (podem mudar):
 
 1. Crie a conta em <https://dashboard.helius.dev/signup>. Existe um plano gratuito (a Helius informa
-   1 milhão de créditos por mês e 10 requisições por segundo), que deve bastar para o teste.
+   1 milhão de créditos por mês e 10 requisições por segundo), que deve bastar para o teste. Se a
+   Helius pedir um **endereço de rebate** (rebate address) ou algo parecido, ele é **opcional** e
+   pode ficar em branco: não faz diferença para o Quitado. Se quiser preencher, use só o seu
+   endereço **público**, e nunca a frase de recuperação.
 2. No painel, abra **API Keys** e clique em **Create New API Key**. Dê um nome e **copie a chave na
    hora**: depois ela não aparece de novo.
 3. A URL da mainnet tem este formato, com a sua chave no lugar de `SUA_CHAVE`:
