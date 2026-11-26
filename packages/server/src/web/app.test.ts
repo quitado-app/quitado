@@ -225,6 +225,11 @@ describe('web app', () => {
       for (const page of [en, pt]) {
         expect(page.body).toContain('href="https://railway.com/deploy/quitado"');
       }
+      // The Portuguese page sends people to the Railway step-by-step, not to the Docker quick guide.
+      expect(pt.body).toContain(
+        'href="https://github.com/quitado-app/quitado/blob/main/docs/pt-BR/railway.md"',
+      );
+      expect(pt.body).not.toContain('guia-rapido.md');
       expect(pt.body).toContain('estão planejados e ainda não existem');
       expect(pt.body).toContain('Ele não é nota fiscal'); // the receipt is not a tax document
       // No customers, numbers or testimonials exist, so none may appear.

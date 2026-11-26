@@ -298,7 +298,7 @@ const ptBR: Copy = {
     title: 'Cobre em USDC ou USDT. O dinheiro cai direto na sua carteira.',
     lead: 'O Quitado é um sistema de cobrança de código aberto para quem trabalha por conta própria. Você cria a fatura e manda o link. Seu cliente paga pela carteira Solana dele, e a fatura vira paga assim que o pagamento é confirmado na blockchain.',
     promise: 'O Quitado nunca guarda seu dinheiro nem suas chaves, e não cobra taxa.',
-    guide: { label: 'Ler o guia e rodar o seu', href: `${DOCS}/pt-BR/guia-rapido.md` },
+    guide: { label: 'Ler o guia e rodar o seu', href: `${DOCS}/pt-BR/railway.md` },
     code: { label: 'Ver o código no GitHub', href: REPO },
     early: 'Software em estágio inicial. Comece com valores pequenos.',
     tokens:
@@ -419,7 +419,7 @@ const ptBR: Copy = {
     commandNote: 'Preencha o arquivo .env antes de iniciar. O guia explica cada configuração.',
     copy: 'Copiar',
     copied: 'Copiado',
-    guide: { label: 'Ler o guia e rodar o seu', href: `${DOCS}/pt-BR/guia-rapido.md` },
+    guide: { label: 'Ler o guia e rodar o seu', href: `${DOCS}/pt-BR/railway.md` },
     railway: {
       note: 'Prefere não mexer em servidor? Suba a sua própria instância na Railway em poucos cliques: você só informa o endereço da sua carteira e uma URL de RPC, e a senha de acesso é gerada para você.',
       link: { label: 'Subir na Railway', href: 'https://railway.com/deploy/quitado' },
@@ -471,7 +471,7 @@ const ptBR: Copy = {
     license: 'Código aberto sob a licença Apache-2.0.',
     links: [
       { label: 'Código-fonte', href: REPO },
-      { label: 'Guia', href: `${DOCS}/pt-BR/guia-rapido.md` },
+      { label: 'Guia', href: `${DOCS}/pt-BR/railway.md` },
       { label: 'Política de segurança', href: `${REPO}/blob/main/SECURITY.md` },
     ],
   },

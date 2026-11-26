@@ -8,6 +8,8 @@ ela cuida do resto.
 > Comece com valores pequenos, como 1 USDC. A Railway tem seus próprios planos e preços: veja no site
 > deles antes de começar.
 
+Prefere rodar na sua própria máquina ou servidor, com Docker? Veja o [guia rápido](guia-rapido.md).
+
 O dinheiro vai **direto para a sua carteira**. O Quitado nunca guarda seus fundos nem suas chaves, e
 cada instância tem um único dono: você.
 
