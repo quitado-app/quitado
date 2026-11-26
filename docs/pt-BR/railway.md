@@ -13,6 +13,76 @@ Prefere rodar na sua própria máquina ou servidor, com Docker? Veja o [guia rá
 O dinheiro vai **direto para a sua carteira**. O Quitado nunca guarda seus fundos nem suas chaves, e
 cada instância tem um único dono: você.
 
+## Primeira vez com Solana? Comece por aqui
+
+Se você já tem uma carteira Solana, USDC e uma conta em um provedor de RPC, pule para **O caminho mais
+curto: o botão**. Se não, estas são as quatro coisas que você precisa arrumar antes (a ordem importa).
+
+### 1. Uma carteira Solana
+
+1. Instale a **Phantom** (<https://phantom.com>) ou a **Solflare** (<https://solflare.com>), pela
+   loja oficial do celular ou do navegador. Cuidado com aplicativos falsos: confira o nome do
+   desenvolvedor e confirme o endereço do site.
+2. Ao criar a carteira, ela mostra uma **frase de recuperação** (12 ou 24 palavras). Anote **no papel**
+   e guarde em lugar seguro. Quem tem essa frase tem o seu dinheiro. **Ninguém pode te pedir isso**:
+   nem o Quitado, nem a Railway, nem quem te ajuda a testar.
+3. Abra a carteira e copie o seu **endereço público** (uma sequência de letras e números). É ele que vai
+   em `QUITADO_RECIPIENT`. Esse endereço pode ser compartilhado sem problema.
+
+### 2. Um pouco de USDC (e de SOL para a taxa)
+
+Para o teste você precisa de **cerca de US$ 1 a 2 em USDC** e de **uma segunda carteira** para pagar a
+fatura de teste (a maioria dos aplicativos deixa criar mais de uma conta, ou use a carteira de um
+amigo). A carteira que **paga** também precisa de um pouquinho de **SOL** (menos de US$ 1) para a taxa
+de rede da Solana.
+
+1. Em uma **corretora autorizada** (muitas aceitam Pix), compre o USDC e o SOL.
+2. **Saque para o endereço da sua carteira escolhendo a rede Solana.** Esse é o erro que mais custa
+   caro: se você escolher outra rede (Ethereum, Tron e outras), o dinheiro pode ser perdido. Faça
+   primeiro um saque bem pequeno para conferir.
+3. Confira na carteira que o USDC chegou.
+
+O Quitado não compra nem converte dinheiro: isso é feito por fora, na corretora.
+
+### 3. Uma conta em um provedor de RPC
+
+O RPC é o serviço que dá ao seu Quitado acesso à rede Solana para ver se o pagamento chegou. O
+público e gratuito é limitado demais, então crie uma conta em um provedor. Estas são as telas da
+**Helius**, vistas em novembro de 2026 (podem mudar):
+
+1. Crie a conta em <https://dashboard.helius.dev/signup>. Existe um plano gratuito (a Helius informa
+   1 milhão de créditos por mês e 10 requisições por segundo), que deve bastar para o teste.
+2. No painel, abra **API Keys** e clique em **Create New API Key**. Dê um nome e **copie a chave na
+   hora**: depois ela não aparece de novo.
+3. A URL da mainnet tem este formato, com a sua chave no lugar de `SUA_CHAVE`:
+   `https://mainnet.helius-rpc.com/?api-key=SUA_CHAVE`. Essa é a `QUITADO_RPC_URL`.
+4. **Essa URL contém a sua chave: trate como senha.** Não mande para ninguém, nem coloque no GitHub.
+
+### 4. Uma conta na Railway, e quanto ela custa
+
+Entre em <https://railway.com> com o seu GitHub. Valores vistos em novembro de 2026; **confira em
+<https://railway.com/pricing>** antes de começar:
+
+- Conta nova ganha um **teste de 30 dias com US$ 5 em créditos, sem cartão**. Acabando os créditos ou os
+  30 dias, os serviços param e você escolhe um plano (o Hobby custa US$ 5 por mês e inclui US$ 5 de uso).
+- A Railway pode colocar contas novas em um **teste limitado**, com acesso restrito à rede, dependendo
+  da idade e da atividade da sua conta no GitHub. A verificação fica em <https://railway.com/verify>.
+  Ainda não sabemos se esse limite atrapalha o Quitado. Se a sua fatura **nunca** virar paga mesmo
+  pagando certo, confira essa verificação e **conte para a gente**: é exatamente o tipo de coisa que
+  queremos descobrir.
+
+### O teste, do começo ao fim
+
+1. Clique no botão da Railway e faça o deploy (próxima seção).
+2. Abra o endereço da sua instância e entre em `/admin` com a senha de acesso.
+3. Crie uma fatura de **1 USDC**.
+4. Abra o link de pagamento no celular e pague **da segunda carteira**, com **Abrir na carteira** ou o
+   QR code.
+5. Espere até uns 40 segundos: a fatura deve aparecer como **Paga**.
+6. Baixe o **recibo em PDF**.
+
+Anote onde você travou e quanto tempo cada passo levou: é isso que nos ajuda a melhorar este guia.
+
 ## O caminho mais curto: o botão
 
 1. Clique em **Deploy on Railway**: <https://railway.com/deploy/quitado>. Entre na Railway com o seu GitHub.
