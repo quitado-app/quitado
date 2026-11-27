@@ -18,6 +18,7 @@ By default it listens on `127.0.0.1:3000`. Open `/admin` and sign in with your a
 ## What it does
 
 - **Owner area** (`/admin`, sign-in required): list invoices, create one, copy its payment link, and see your usage numbers on `/admin/stats`: invoices issued, paid, open and past due, totals invoiced and received per token (exact, from the database), and payments per month. They are computed from this instance's own database and nothing is sent anywhere; there is no telemetry.
+- **Accountant export** (`/admin/export/paid.csv`, sign-in required, offered on `/admin/stats` once something is paid): the paid invoices as a CSV file. See [below](#accountant-export-csv).
 - **Payment page** (`/pay/<id>`, public, English or Brazilian Portuguese): shows the invoice, a QR
   code and a Solana Pay link, and refreshes itself when the payment is detected. The language
   follows `?lang=`, then the browser's language, then English. The page is the only thing a customer
@@ -27,6 +28,38 @@ By default it listens on `127.0.0.1:3000`. Open `/admin` and sign in with your a
   other host `/` goes to the sign-in.
 - **Payment receipt** (`/pay/<id>/receipt.pdf`, public): a PDF the customer can download once the invoice is paid; see [receipts.md](./receipts.md).
 - **Payment detection** runs in the same process; see [payment-detection.md](./payment-detection.md).
+
+## Accountant export (CSV)
+
+`GET /admin/export/paid.csv` downloads every paid invoice, oldest payment first, as an attachment
+(`quitado-paid-all.csv`). `?year=2026` or `?year=2026&month=11` narrows it to the payments of that
+year or month (`quitado-paid-2026.csv`, `quitado-paid-2026-11.csv`); empty values mean no filter, and
+anything else (a month without a year, month 13) is a `400`. Months are cut in the instance's UTC
+offset (`QUITADO_UTC_OFFSET_MINUTES`), the same as on the stats page.
+
+Columns: invoice ID, paid at (date and time in the instance's UTC offset, which the header names,
+for example `Paid at (UTC-03:00)`), client, description, token (USDC or USDT), amount invoiced, amount
+received, transaction signature and payment reference.
+
+Format decisions:
+
+- **UTF-8 with a byte order mark**, so Excel shows accents correctly instead of guessing a Windows
+  code page.
+- **Separator follows the language** (`?lang=`, then the browser's language, like every owner page):
+  in Portuguese `;` and amounts with a decimal comma (`1250,50`), which is what Excel set to Brazilian
+  Portuguese expects, so the file opens straight into columns of numbers it can sum; in English `,`
+  and a decimal point. No thousands separator. Dates are always `YYYY-MM-DD HH:MM`.
+- **Exact amounts**: decimals are built from the integer base units stored in the database, never from
+  a float.
+- **Every cell is quoted**, with inner quotes doubled, and lines end in CRLF (RFC 4180), so a `;`, `,`,
+  quote or line break typed in a description stays inside its cell.
+- **Formula injection**: a cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return gets a
+  leading `'`, so a client name such as `=HYPERLINK(...)` is shown as text and never run by the
+  spreadsheet.
+
+The file is built on the instance from its own database; nothing is sent anywhere. Amounts stay in
+the token: Quitado does not convert to reais and calculates no tax, and a receipt is not a nota
+fiscal. What to declare, and how, is a question for your accountant.
 
 ## Access model
 

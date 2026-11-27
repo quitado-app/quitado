@@ -127,6 +127,19 @@ Em **Estatísticas** (`/admin/stats`) você vê quantas faturas emitiu, pagas, a
 recebido por token e os pagamentos por mês. Tudo é calculado no seu próprio banco. O Quitado não envia
 nenhuma informação para fora.
 
+## Exportar para o contador
+
+Depois do primeiro pagamento, a página **Estatísticas** mostra **Exportar para o contador**. Deixe o
+ano vazio para baixar todas as faturas pagas, ou escolha um ano e, se quiser, um mês. Clique em
+**Baixar CSV**: o arquivo abre direto no Excel em português, já separado em colunas.
+
+Cada linha é uma fatura paga: ID da fatura, data e hora do pagamento (no fuso horário da instância,
+indicado no cabeçalho, por exemplo `Pago em (UTC-03:00)`), cliente, descrição, token (USDC ou USDT),
+valor faturado, valor recebido, assinatura da transação e referência do pagamento.
+
+Os valores ficam em USDC ou USDT: o Quitado não converte para reais e não calcula imposto. Recibo não é
+nota fiscal. O que declarar, e como, é com o seu contador.
+
 ## Onde aprender mais (em inglês)
 
 - [Publicação, Railway e checklist da mainnet](../deploy.md)

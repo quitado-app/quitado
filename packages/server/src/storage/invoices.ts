@@ -37,6 +37,8 @@ export interface InvoiceStore {
   list(options?: ListOptions): Invoice[];
   /** Open invoices, oldest first: what the payment detection worker polls. */
   listOpen(): Invoice[];
+  /** Every paid invoice, oldest payment first: what the accountant export reads. */
+  listPaid(): Invoice[];
   /**
    * Persists a settled invoice (the result of core's recordPayment) atomically: the status
    * change and the payment row succeed or fail together. Idempotent for the same signature.
@@ -159,6 +161,9 @@ export function createInvoiceStore(db: DatabaseSync): InvoiceStore {
   const selectOpen = readsBigInt(
     db.prepare(`${SELECT_INVOICES} where i.status = 'open' order by i.created_at, i.id`),
   );
+  const selectPaid = readsBigInt(
+    db.prepare(`${SELECT_INVOICES} where i.status = 'paid' order by p.received_at, i.id`),
+  );
   const selectState = readsBigInt(
     db.prepare(`
       select i.amount as amount, i.status as status, p.signature as signature
@@ -225,6 +230,10 @@ export function createInvoiceStore(db: DatabaseSync): InvoiceStore {
 
     listOpen() {
       return selectOpen.all().map(toInvoice);
+    },
+
+    listPaid() {
+      return selectPaid.all().map(toInvoice);
     },
 
     stats(now, utcOffsetMinutes) {

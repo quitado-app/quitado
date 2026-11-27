@@ -530,6 +530,41 @@ export function statsPage(ctx: PageContext, stats: InvoiceStats): string {
       </tr>`,
   );
 
+  // A plain GET form: the browser builds /admin/export/paid.csv?year=..&month=..&lang=.. by itself,
+  // so no script is needed. The language goes along as a field because a GET form replaces the
+  // query of its action.
+  const monthOptions = Array.from({ length: 12 }, (_, index) => {
+    const month = String(index + 1).padStart(2, '0');
+    return html`<option value="${month}">${month}</option>`;
+  });
+  const exportSection =
+    stats.paid === 0
+      ? ''
+      : html`<h2>${m('exportHeading')}</h2>
+          <div class="card">
+            <p class="muted">${m('exportNote')}</p>
+            <form method="get" action="/admin/export/paid.csv">
+              <input type="hidden" name="lang" value="${lang}" />
+              <label for="export_year">${m('exportYear')}</label>
+              <input
+                id="export_year"
+                name="year"
+                inputmode="numeric"
+                pattern="2[0-9]{3}"
+                maxlength="4"
+                placeholder="${formatDate(ctx.now, ctx.utcOffsetMinutes).slice(0, 4)}"
+                aria-describedby="export_year_hint"
+              />
+              <p class="muted" id="export_year_hint">${m('exportYearHint')}</p>
+              <label for="export_month">${m('exportMonth')}</label>
+              <select id="export_month" name="month">
+                <option value="">${m('exportAllMonths')}</option>
+                ${monthOptions}
+              </select>
+              <p><button type="submit">${m('exportDownload')}</button></p>
+            </form>
+          </div>`;
+
   return layout({
     title: `${m('statsTitle')} · Quitado`,
     cluster: ctx.cluster,
@@ -585,6 +620,7 @@ export function statsPage(ctx: PageContext, stats: InvoiceStats): string {
                       </table>`
                 }
               </div>`
-      }`,
+      }
+      ${exportSection}`,
   });
 }

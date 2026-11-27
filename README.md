@@ -3,8 +3,9 @@
 Open-source, non-custodial USDC/USDT invoicing on Solana for Brazilian freelancers.
 
 > **Status: early development, not ready for production use.** The core, storage, payment detection
-> and the web app work and are tested (including against a real devnet). The Brazilian
-> tax layer (exchange-rate references and accountant exports) is planned and not built yet.
+> and the web app work and are tested (including against a real devnet). The owner can download
+> the paid invoices as a CSV file for an accountant (amounts in the token, no tax calculation). The
+> Brazilian tax layer (exchange-rate references, tax rules) is planned and not built yet.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/quitado)
 

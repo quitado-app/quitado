@@ -1087,6 +1087,156 @@ describe('web app', () => {
     });
   });
 
+  describe('accountant export', () => {
+    beforeEach(() => start());
+
+    const EXPORT = '/admin/export/paid.csv';
+    const payInvoice = (id: string, receivedAt: number, signature: string) => {
+      const invoice = store.get(id)!;
+      store.settle(recordPayment(invoice, { signature, amount: invoice.amount, receivedAt }));
+    };
+    const rows = (body: string) => body.replace(/^﻿/, '').split('\r\n').slice(1, -1);
+
+    it('needs a sign-in, like the rest of the owner area', async () => {
+      const response = await call(EXPORT);
+      expect(response.status).toBe(303);
+      expect(response.headers.location).toBe('/admin/login');
+      expect(response.body).toBe('');
+      const pt = await call(`${EXPORT}?lang=pt-BR`);
+      expect(pt.headers.location).toBe('/admin/login?lang=pt-BR');
+    });
+
+    it('downloads a UTF-8 CSV file with a BOM and the strict security headers', async () => {
+      const cookie = await login();
+      const response = await call(EXPORT, { headers: { cookie } });
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toBe('text/csv; charset=utf-8');
+      expect(response.headers['content-disposition']).toBe(
+        'attachment; filename="quitado-paid-all.csv"',
+      );
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['content-security-policy']).toContain("default-src 'none'");
+      expect([...response.buffer.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+      expect(rows(response.body)).toEqual([]); // nothing paid yet: header only
+      expect(response.body).toContain('"Invoice ID","Paid at (UTC-03:00)"');
+    });
+
+    it('lists only paid invoices, oldest payment first, with exact amounts', async () => {
+      const cookie = await login();
+      const first = await createInvoiceViaForm(cookie, { amount: '1250.5' });
+      const second = await createInvoiceViaForm(cookie, { amount: '0.000001', asset: 'USDT' });
+      await createInvoiceViaForm(cookie, { amount: '10' }); // stays open
+      payInvoice(second, Date.UTC(2026, 10, 3, 12), 'sig-second');
+      payInvoice(first, Date.UTC(2026, 10, 2, 12), 'sig-first');
+
+      const body = (await call(EXPORT, { headers: { cookie } })).body;
+      const [a, b, ...rest] = rows(body);
+      expect(rest).toEqual([]);
+      expect(a).toBe(
+        `"${first}","2026-11-02 09:00","Acme Inc","Website redesign, October","USDC","1250.50","1250.50","sig-first","${store.get(first)!.reference}"`,
+      );
+      expect(b).toContain(`"${second}","2026-11-03 09:00"`);
+      expect(b).toContain('"USDT","0.000001","0.000001","sig-second"');
+    });
+
+    it('uses ";" and decimal commas in Portuguese, picked like every owner page', async () => {
+      const cookie = await login();
+      payInvoice(await createInvoiceViaForm(cookie), NOW, 'sig-pt');
+      const viaQuery = (await call(`${EXPORT}?lang=pt-BR`, { headers: { cookie } })).body;
+      expect(viaQuery).toContain('"ID da fatura";"Pago em (UTC-03:00)";"Cliente"');
+      expect(viaQuery).toContain('"USDC";"1250,50";"1250,50"');
+      const viaBrowser = await call(EXPORT, {
+        headers: { cookie, 'accept-language': 'pt-BR,pt;q=0.9' },
+      });
+      expect(viaBrowser.body).toContain('"ID da fatura";');
+    });
+
+    it('keeps accents, quotes, separators and newlines inside their cells', async () => {
+      const cookie = await login();
+      const id = await createInvoiceViaForm(cookie, {
+        client_name: 'João "Jota" Ação; Ltda, ME',
+        description: 'Linha 1\nLinha 2',
+      });
+      payInvoice(id, NOW, 'sig-text');
+      const body = (await call(EXPORT, { headers: { cookie } })).body;
+      expect(body).toContain('"João ""Jota"" Ação; Ltda, ME"');
+      expect(body).toMatch(/"Linha 1\r?\nLinha 2"/);
+    });
+
+    it('neutralises client text that a spreadsheet would run as a formula', async () => {
+      const cookie = await login();
+      const id = await createInvoiceViaForm(cookie, {
+        client_name: '=HYPERLINK("http://evil.example","click")',
+        description: '+cmd|/C calc!A0',
+      });
+      payInvoice(id, NOW, 'sig-formula');
+      const body = (await call(EXPORT, { headers: { cookie } })).body;
+      expect(body).toContain(`"'=HYPERLINK(""http://evil.example"",""click"")"`);
+      expect(body).toContain(`"'+cmd|/C calc!A0"`);
+      expect(body).not.toMatch(/(^|[,;])"[=+\-@]/m);
+    });
+
+    it('filters by year and month in the instance offset', async () => {
+      const cookie = await login();
+      const october = await createInvoiceViaForm(cookie);
+      const november = await createInvoiceViaForm(cookie);
+      const nextYear = await createInvoiceViaForm(cookie);
+      // 1 Nov 01:00 UTC is still 31 October at UTC-03:00.
+      payInvoice(october, Date.UTC(2026, 10, 1, 1), 'sig-oct');
+      payInvoice(november, Date.UTC(2026, 10, 15, 12), 'sig-nov');
+      payInvoice(nextYear, Date.UTC(2027, 0, 5, 12), 'sig-2027');
+
+      const get = (query: string) => call(`${EXPORT}?${query}`, { headers: { cookie } });
+      const ids = (body: string) => rows(body).map((row) => row.slice(1, 23));
+
+      const oct = await get('year=2026&month=10');
+      expect(ids(oct.body)).toEqual([october]);
+      expect(oct.headers['content-disposition']).toBe(
+        'attachment; filename="quitado-paid-2026-10.csv"',
+      );
+      expect(ids((await get('year=2026&month=11')).body)).toEqual([november]);
+      const year = await get('year=2026&month=');
+      expect(ids(year.body)).toEqual([october, november]);
+      expect(year.headers['content-disposition']).toContain('quitado-paid-2026.csv');
+      expect(ids((await get('year=2027')).body)).toEqual([nextYear]);
+      expect(ids((await get('year=&month=')).body)).toEqual([october, november, nextYear]);
+      expect(rows((await get('year=2025')).body)).toEqual([]);
+    });
+
+    it('refuses a period it cannot read, in the language of the page', async () => {
+      const cookie = await login();
+      for (const query of ['year=26', 'year=2026&month=13', 'month=11', 'year=2026x']) {
+        const response = await call(`${EXPORT}?${query}`, { headers: { cookie } });
+        expect(response.status, query).toBe(400);
+        expect(response.headers['content-type']).toContain('text/html');
+        expect(response.headers['content-disposition']).toBeUndefined();
+      }
+      const pt = await call(`${EXPORT}?year=x&lang=pt-BR`, { headers: { cookie } });
+      expect(pt.body).toContain('Período inválido');
+      expect((await call(EXPORT, { method: 'POST', headers: { cookie } })).status).toBe(405);
+    });
+
+    it('is offered on the stats page once something is paid, keeping the language', async () => {
+      const cookie = await login();
+      const empty = (await call('/admin/stats', { headers: { cookie } })).body;
+      expect(empty).not.toContain('action="/admin/export/paid.csv"');
+
+      payInvoice(await createInvoiceViaForm(cookie), NOW, 'sig-link');
+      const page = (await call('/admin/stats', { headers: { cookie } })).body;
+      expect(page).toContain('<form method="get" action="/admin/export/paid.csv">');
+      expect(page).toContain('<input type="hidden" name="lang" value="en" />');
+      expect(page).toContain('Quitado does not convert to reais');
+      expect(page).toContain('A receipt is not a nota fiscal.');
+
+      const pt = (await call('/admin/stats?lang=pt-BR', { headers: { cookie } })).body;
+      expect(pt).toContain('Exportar para o contador');
+      expect(pt).toContain('<input type="hidden" name="lang" value="pt-BR" />');
+      expect(pt).toContain('o Quitado não converte para reais');
+      expect(pt).toContain('Recibo não é nota fiscal.');
+    });
+  });
+
   it('rate limits the public pages per client', async () => {
     await start({ publicMax: 3 });
     for (let i = 0; i < 3; i++)

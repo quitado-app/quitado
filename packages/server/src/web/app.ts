@@ -15,6 +15,7 @@ import { APP_CSS, APP_JS } from './assets.ts';
 import { LANDING_CSS } from './landing-assets.ts';
 import { landingPage } from './landing.ts';
 import { createRateLimiter, type Auth, type RateLimiter } from './auth.ts';
+import { csvFileName, inPeriod, paidInvoicesCsv, parsePeriod } from './csv.ts';
 import { endOfDay, explorerTxUrl, formatDate } from './format.ts';
 import {
   BodyTooLargeError,
@@ -385,6 +386,31 @@ export function createWebServer(deps: AppDeps): Server {
       handler: admin((ctx) =>
         send(ctx, 200, statsPage(pageContext(ctx), store.stats(ctx.now, config.utcOffsetMinutes))),
       ),
+    },
+    {
+      // Paid invoices as CSV for the owner's accountant; ?year=2026&month=11 narrows it down.
+      method: 'GET',
+      pattern: /^\/admin\/export\/paid\.csv$/,
+      handler: admin((ctx) => {
+        const period = parsePeriod(ctx.query);
+        if (!period) {
+          return send(ctx, 400, noticePage(ctx, 'exportBadPeriodTitle', 'exportBadPeriodText'));
+        }
+        const paid = store
+          .listPaid()
+          .filter(
+            (invoice) =>
+              invoice.payment !== undefined &&
+              inPeriod(invoice.payment.receivedAt, period, config.utcOffsetMinutes),
+          );
+        const csv = paidInvoicesCsv(paid, {
+          lang: langOf(ctx),
+          utcOffsetMinutes: config.utcOffsetMinutes,
+        });
+        send(ctx, 200, csv, 'text/csv; charset=utf-8', {
+          'Content-Disposition': `attachment; filename="${csvFileName(period)}"`,
+        });
+      }),
     },
     {
       method: 'GET',
