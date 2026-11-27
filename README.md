@@ -11,6 +11,23 @@ Open-source, non-custodial USDC/USDT invoicing on Solana for Brazilian freelance
 
 You can run your own instance on Railway with one click, or on any server with Docker (see below).
 
+## At a glance
+
+- **What it is:** a way for a freelancer paid from abroad to bill in USDC or USDT on Solana. You send
+  a link, the client pays from their wallet, the invoice marks itself as paid and a PDF receipt is
+  issued. Quitado never holds the money or the keys and charges no fee. It runs on Solana mainnet.
+- **New in the Dev3pack hackathon (27 to 29 November 2026):** a CSV export of paid invoices for the
+  accountant, a public page that re-checks a payment on the Solana blockchain, and a link-preview
+  image for the site. The full list, with its pull requests, is in
+  [During the hackathon](#during-the-hackathon-27-to-29-november); the state before it is the git
+  tag [`pre-hackathon`](https://github.com/quitado-app/quitado/tree/pre-hackathon).
+- **See it working:** the home page is [quitado.finance](https://quitado.finance). The author's own
+  instance runs at `pay.quitado.finance`: its owner area needs the owner's secret, but payment pages
+  and the `/verify` page are public. To run your own in a few minutes, use the Railway button above
+  and the [step-by-step guide in Portuguese](docs/pt-BR/railway.md).
+- **Honest status:** early stage. There are no customers yet, and the Brazilian tax layer is planned,
+  not built.
+
 ## What it is
 
 You create an invoice, send your client a link, and the client pays from any Solana wallet by
