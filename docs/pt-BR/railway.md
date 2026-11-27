@@ -202,6 +202,47 @@ Se isso funcionou, a instância está pronta. Confira três vezes o endereço em
 antes de mandar o link para um cliente de verdade: um endereço errado manda dinheiro real para outra
 pessoa.
 
+## Prefere testar sem dinheiro de verdade? A devnet
+
+A **devnet** é a rede de testes da Solana: o dinheiro dela é de mentira e não vale nada. Serve para
+quem não quer gastar nem 1 USDC no primeiro teste.
+
+> **Atenção:** este caminho é **menos testado** que o da mainnet. Ninguém rodou ainda o template da
+> Railway na devnet, e não sabemos se a carteira do celular consegue pagar um pedido na devnet pelo
+> botão ou pelo QR code: o link de pagamento não informa a rede, então a carteira precisa estar
+> configurada para a devnet. Se algo travar, conte para a gente: é exatamente esse retorno que ajuda.
+> O caminho verificado continua sendo a mainnet com cerca de 1 USDC.
+
+O que muda, em relação ao caminho da mainnet:
+
+1. **Carteira em modo de teste.** Procure, nas configurações da sua carteira, a opção de rede de teste
+   (testnet ou devnet) e escolha a **devnet**. Use essa carteira só para testes.
+2. **SOL de teste, para a taxa de rede:** <https://faucet.solana.com> (a torneira oficial da Solana
+   pede para entrar com o GitHub). Escolha **devnet** e o endereço da sua carteira.
+3. **USDC de teste:** <https://faucet.circle.com>, escolhendo **Solana Devnet**. A Circle informa o
+   limite de 20 USDC a cada 2 horas por endereço. A carteira que **paga** precisa ter esse USDC de
+   teste e um pouco de SOL de teste; a que **recebe** só precisa do endereço.
+4. **Na Railway,** na aba **Variables** do serviço, acrescente as duas variáveis **juntas** (sem a
+   segunda, o Quitado se recusa a iniciar na devnet):
+
+   | Variável          | O que colocar                                         |
+   | ----------------- | ----------------------------------------------------- |
+   | `QUITADO_CLUSTER` | `devnet`                                              |
+   | `QUITADO_ASSETS`  | `USDC:4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU:6` |
+
+   Esse é o endereço do USDC de devnet que a Circle lista na própria documentação (confira em
+   <https://developers.circle.com>, no guia "Transfer USDC on Solana", em "USDC Mint Address (Devnet)").
+   Na tela do botão, em `QUITADO_RPC_URL`, use a URL de **devnet**: a pública
+   (`https://api.devnet.solana.com`) basta para um teste, ou a da Helius
+   (`https://devnet.helius-rpc.com/?api-key=SUA_CHAVE`). Depois de salvar, a Railway publica de novo.
+
+5. **Faça o teste normal** (passo 6): crie a fatura de 1 USDC, pague de outra carteira, também na
+   devnet, e espere ela virar **Paga**. As páginas mostram um aviso de rede de teste, para você saber
+   em que rede está.
+
+Nada na devnet move dinheiro de verdade, e **um endereço de teste não deve ser usado para receber
+valores reais**.
+
 ## Quando algo não funciona
 
 | O que acontece                                      | O que provavelmente é                                                                                                |
