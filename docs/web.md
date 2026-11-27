@@ -25,7 +25,13 @@ By default it listens on `127.0.0.1:3000`. Open `/admin` and sign in with your a
   needs; they never see the owner area.
 - **Home page** (`/`, only when `QUITADO_SITE_HOST` is set and the request is for that host): what
   Quitado is and does, in the same two languages, with no script and no outside resource. On every
-  other host `/` goes to the sign-in.
+  other host `/` goes to the sign-in. When the link is shared (X, LinkedIn, WhatsApp) it shows a
+  preview card: `og:image` and `twitter:card` tags point to a 1200x630 PNG per language,
+  `/static/og-en.png` and `/static/og-pt-BR.png`, kept as base64 in `src/web/share-images.ts` (the
+  crawlers of these sites do not accept SVG). The images use the site's own mark and palette and only
+  repeat what the page already says; a test checks that the tags exist and that the files are real
+  1200x630 PNGs. Social sites cache a card for a while, so a link shared before this existed may keep
+  showing no image until they refresh it.
 - **Payment receipt** (`/pay/<id>/receipt.pdf`, public): a PDF the customer can download once the invoice is paid; see [receipts.md](./receipts.md).
 - **Payment detection** runs in the same process; see [payment-detection.md](./payment-detection.md).
 
