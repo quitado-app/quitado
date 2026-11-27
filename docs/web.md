@@ -32,6 +32,17 @@ By default it listens on `127.0.0.1:3000`. Open `/admin` and sign in with your a
   repeat what the page already says; a test checks that the tags exist and that the files are real
   1200x630 PNGs. Social sites cache a card for a while, so a link shared before this existed may keep
   showing no image until they refresh it.
+- **Check a payment on the blockchain** (`/verify`, public): paste a transaction signature and the page
+  re-reads that transaction from the Solana network (at `finalized`), with the same rules the payment
+  detection uses, and shows what the chain itself says: the amount and token the recipient gained, the
+  recipient, the payer, the time of the block and a link to an explorer. It does not trust the database
+  alone, and it shows no client name or description. Only a signature this instance recorded for a paid
+  invoice is looked up, so the page cannot be used to spend the owner's RPC credits on arbitrary
+  transactions (anything else is a 404 without touching the network), and a check has its own limit of 20 per
+  minute per client. A verified result is kept in memory (a finalized transaction cannot change); a
+  failure to read the network is never kept, answers `503` and the next try asks again. If the chain
+  does not show the recorded payment the page says "Not confirmed" instead of agreeing. The paid payment
+  page links to it. Without a configured RPC reader (tests) it answers `503`.
 - **Payment receipt** (`/pay/<id>/receipt.pdf`, public): a PDF the customer can download once the invoice is paid; see [receipts.md](./receipts.md).
 - **Payment detection** runs in the same process; see [payment-detection.md](./payment-detection.md).
 

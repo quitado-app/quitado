@@ -355,6 +355,105 @@ function languageSwitch(lang: Lang, path = ''): Raw {
   </nav>`;
 }
 
+/** What the /verify page shows: the form, or the result of checking one signature. */
+export type VerifyView =
+  | { state: 'form' }
+  | { state: 'bad' | 'unknown'; signature: string }
+  | {
+      state: 'verified';
+      signature: string;
+      /** "0.10 USDC", read from the chain. */
+      amount: string;
+      recipient: string;
+      payer?: string;
+      /** The chain's own time of the block, formatted; absent when the cluster did not report it. */
+      time?: string;
+      explorerUrl: string;
+    }
+  | { state: 'mismatch' | 'unavailable'; signature: string; explorerUrl: string };
+
+/**
+ * Anyone can paste a payment's transaction signature and see what the Solana network itself says
+ * about it. Nothing from the database is shown beyond the facts already public on the chain (no
+ * client name, no description).
+ */
+export function verifyPage(ctx: PageContext, view: VerifyView): string {
+  const lang = ctx.lang;
+  const m = (key: MessageKey, params?: Record<string, string>) => t(lang, key, params);
+  const typed = view.state === 'form' ? '' : view.signature;
+  const form = html`<form method="get" action="/verify">
+    <input type="hidden" name="lang" value="${lang}" />
+    <label for="verify_tx">${m('verifyInputLabel')}</label>
+    <input
+      id="verify_tx"
+      name="tx"
+      class="mono"
+      autocomplete="off"
+      spellcheck="false"
+      required
+      maxlength="100"
+      value="${typed}"
+    />
+    <p><button type="submit">${m('verifyButton')}</button></p>
+  </form>`;
+
+  let result: Raw | string = '';
+  if (view.state === 'bad') {
+    result = html`<div class="error" role="alert">${m('verifyBadSignature')}</div>`;
+  } else if (view.state === 'unknown') {
+    result = html`<div class="error" role="alert">${m('verifyUnknown')}</div>`;
+  } else if (view.state === 'verified') {
+    const network = ctx.cluster === 'devnet' ? m('networkDevnet') : m('networkMain');
+    result = html`<div class="card" role="status">
+      <h2><span class="chip chip-paid">${m('verifyOkTitle')}</span></h2>
+      <p>${m('verifyOkText', { network })}</p>
+      <span class="label">${m('verifyReceived')}</span>
+      <p class="amount">${view.amount}</p>
+      <span class="label">${m('recipient')}</span>
+      <p class="mono">${view.recipient}</p>
+      ${
+        view.payer
+          ? html`<span class="label">${m('verifyPaidFrom')}</span>
+              <p class="mono">${view.payer}</p>`
+          : ''
+      }
+      ${
+        view.time
+          ? html`<span class="label">${m('verifyBlockTime')}</span>
+              <p>${view.time}</p>`
+          : ''
+      }
+      <span class="label">${m('transaction')}</span>
+      <p class="mono">${view.signature}</p>
+      <p>
+        <a href="${view.explorerUrl}" rel="noopener noreferrer">${m('viewTransaction')}</a>
+      </p>
+    </div>`;
+  } else if (view.state === 'mismatch') {
+    result = html`<div class="card" role="alert">
+      <h2><span class="chip chip-overdue">${m('verifyMismatchTitle')}</span></h2>
+      <p>${m('verifyMismatchText')}</p>
+      <p><a href="${view.explorerUrl}" rel="noopener noreferrer">${m('viewTransaction')}</a></p>
+    </div>`;
+  } else if (view.state === 'unavailable') {
+    result = html`<div class="card" role="alert">
+      <h2><span class="chip chip-open">${m('verifyUnavailableTitle')}</span></h2>
+      <p>${m('verifyUnavailableText')}</p>
+    </div>`;
+  }
+
+  return layout({
+    title: `${m('verifyPageTitle')} · Quitado`,
+    cluster: ctx.cluster,
+    lang,
+    switcher: languageSwitch(lang, '/verify'),
+    body: html`<h1>${m('verifyPageTitle')}</h1>
+      <p class="muted">${m('verifyPageIntro')}</p>
+      <div class="card">${form}</div>
+      ${result}`,
+  });
+}
+
 export function payPage(ctx: PageContext, data: PayPageData): string {
   const { invoice, issuer } = data;
   const payment = invoice.payment;
@@ -408,6 +507,11 @@ export function payPage(ctx: PageContext, data: PayPageData): string {
           <span class="label">${m('transaction')}</span>
           <p class="mono">${payment.signature}</p>
           <p class="muted">${m('verifyNote')}</p>
+          <p>
+            <a href="/verify?tx=${encodeURIComponent(payment.signature)}&amp;lang=${lang}"
+              >${m('verifyAgain')}</a
+            >
+          </p>
         </div>`
     : html`<div
           class="card"
