@@ -33,6 +33,8 @@ export interface InvoiceStore {
   insert(invoice: Invoice): void;
   get(id: string): Invoice | undefined;
   getByReference(reference: string): Invoice | undefined;
+  /** The invoice settled by this transaction signature, if this instance recorded one. */
+  getByPaymentSignature(signature: string): Invoice | undefined;
   /** Newest first. */
   list(options?: ListOptions): Invoice[];
   /** Open invoices, oldest first: what the payment detection worker polls. */
@@ -150,6 +152,7 @@ export function createInvoiceStore(db: DatabaseSync): InvoiceStore {
   `);
   const selectById = readsBigInt(db.prepare(`${SELECT_INVOICES} where i.id = ?`));
   const selectByReference = readsBigInt(db.prepare(`${SELECT_INVOICES} where i.reference = ?`));
+  const selectBySignature = readsBigInt(db.prepare(`${SELECT_INVOICES} where p.signature = ?`));
   const selectAll = readsBigInt(
     db.prepare(`${SELECT_INVOICES} order by i.created_at desc, i.id limit ? offset ?`),
   );
@@ -211,6 +214,11 @@ export function createInvoiceStore(db: DatabaseSync): InvoiceStore {
 
     getByReference(reference) {
       const row = selectByReference.get(reference);
+      return row ? toInvoice(row) : undefined;
+    },
+
+    getByPaymentSignature(signature) {
+      const row = selectBySignature.get(signature);
       return row ? toInvoice(row) : undefined;
     },
 

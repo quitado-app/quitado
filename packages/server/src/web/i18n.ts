@@ -62,6 +62,29 @@ const en = {
   transaction: 'Transaction',
   verifyNote:
     'These details are recorded on the Solana blockchain, so anyone can check them in an explorer.',
+  verifyAgain: 'Check this payment on the blockchain again',
+  // The /verify page: re-reads a payment from the Solana network.
+  verifyPageTitle: 'Check a payment on the blockchain',
+  verifyPageIntro:
+    'Paste the transaction signature of a payment. Quitado reads that transaction from the Solana network right now and shows what it actually did, so you do not have to take its word for it.',
+  verifyInputLabel: 'Transaction signature',
+  verifyButton: 'Check',
+  verifyBadSignature:
+    'That does not look like a Solana transaction signature. It is a string of 80 to 90 letters and numbers.',
+  verifyUnknown:
+    'This instance has no payment recorded with that signature. The check only covers payments of invoices issued here.',
+  verifyOkTitle: 'Confirmed on the blockchain',
+  verifyOkText:
+    'Just now, the network ({network}) showed this payment confirmed at the finalized level.',
+  verifyReceived: 'Received',
+  verifyPaidFrom: 'Paid from',
+  verifyBlockTime: 'Time on the blockchain',
+  verifyMismatchTitle: 'Not confirmed',
+  verifyMismatchText:
+    'The network was read, but that transaction does not show the payment this instance recorded. Do not rely on it, and ask the issuer.',
+  verifyUnavailableTitle: 'Could not check right now',
+  verifyUnavailableText:
+    'The Solana network could not be read at this moment. Try again in a minute.',
 
   // The receipt PDF.
   receiptTitle: 'Payment receipt',
@@ -240,6 +263,28 @@ const ptBR: Record<MessageKey, string> = {
   transaction: 'Transação',
   verifyNote:
     'Estes dados estão registrados na blockchain Solana, e qualquer pessoa pode conferi-los em um explorador.',
+  verifyAgain: 'Conferir este pagamento de novo na blockchain',
+  verifyPageTitle: 'Conferir um pagamento na blockchain',
+  verifyPageIntro:
+    'Cole a assinatura da transação de um pagamento. O Quitado lê essa transação na rede Solana agora e mostra o que ela realmente fez, para você não precisar confiar só na palavra dele.',
+  verifyInputLabel: 'Assinatura da transação',
+  verifyButton: 'Conferir',
+  verifyBadSignature:
+    'Isso não parece uma assinatura de transação da Solana. Ela é uma sequência de 80 a 90 letras e números.',
+  verifyUnknown:
+    'Esta instância não tem nenhum pagamento registrado com essa assinatura. A conferência só vale para pagamentos de faturas emitidas aqui.',
+  verifyOkTitle: 'Confirmado na blockchain',
+  verifyOkText:
+    'Agora há pouco, a rede ({network}) mostrou este pagamento confirmado no nível finalizado.',
+  verifyReceived: 'Recebido',
+  verifyPaidFrom: 'Pago por',
+  verifyBlockTime: 'Hora na blockchain',
+  verifyMismatchTitle: 'Não confirmado',
+  verifyMismatchText:
+    'A rede foi lida, mas essa transação não mostra o pagamento que esta instância registrou. Não confie nele e pergunte a quem emitiu a fatura.',
+  verifyUnavailableTitle: 'Não foi possível conferir agora',
+  verifyUnavailableText:
+    'Não foi possível ler a rede Solana neste momento. Tente de novo em um minuto.',
 
   receiptTitle: 'Recibo de pagamento',
   receiptPdfTitle: 'Recibo de pagamento {id}',

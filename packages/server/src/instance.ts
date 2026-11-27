@@ -72,6 +72,7 @@ export async function startInstance(
     store,
     registry,
     auth: createAuth(config.accessSecret),
+    chain,
     onError: options.onError ?? ((error) => console.error('request failed:', error)),
   });
 

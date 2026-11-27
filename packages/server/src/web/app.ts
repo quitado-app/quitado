@@ -17,7 +17,8 @@ import { landingPage } from './landing.ts';
 import { SHARE_IMAGES } from './share-images.ts';
 import { createRateLimiter, type Auth, type RateLimiter } from './auth.ts';
 import { csvFileName, inPeriod, paidInvoicesCsv, parsePeriod } from './csv.ts';
-import { endOfDay, explorerTxUrl, formatDate } from './format.ts';
+import type { ChainReader } from '../detection/types.ts';
+import { displayAmount, endOfDay, explorerTxUrl, formatDate, formatDateTime } from './format.ts';
 import {
   BodyTooLargeError,
   isSameOrigin,
@@ -36,9 +37,11 @@ import {
   newInvoicePage,
   payPage,
   statsPage,
+  verifyPage,
   type NewInvoiceValues,
   type PageContext,
 } from './pages.ts';
+import { createPaymentVerifier } from './verify.ts';
 import { buildReceiptPdf } from '../receipt/receipt.ts';
 import { qrSvg } from './qr.ts';
 import { buildPaymentUrl } from './solana-pay.ts';
@@ -59,8 +62,13 @@ export interface AppDeps {
   publicLimiter?: RateLimiter;
   newId?: () => string;
   newReference?: () => string;
+  /** The Solana reader the /verify page uses to re-check a payment; without it the page says it cannot. */
+  chain?: ChainReader;
   onError?: (error: unknown) => void;
 }
+
+/** A transaction signature is 64 bytes in base58: 86 to 88 characters, so 80 to 90 is generous. */
+const SIGNATURE = /^[1-9A-HJ-NP-Za-km-z]{80,90}$/;
 
 interface Context {
   request: IncomingMessage;
@@ -89,6 +97,9 @@ export function createWebServer(deps: AppDeps): Server {
   const makeReference = deps.newReference ?? newReference;
   const loginLimiter = deps.loginLimiter ?? createRateLimiter({ max: 10, windowMs: 15 * 60_000 });
   const publicLimiter = deps.publicLimiter ?? createRateLimiter({ max: 120, windowMs: 60_000 });
+  // A check reads the Solana network, which costs the owner RPC credits: a tighter limit than pages.
+  const verifyLimiter = createRateLimiter({ max: 20, windowMs: 60_000 });
+  const verifier = createPaymentVerifier(deps.chain, config.recipient);
 
   const https = config.baseUrl.startsWith('https://');
   // The __Host- prefix makes browsers refuse the cookie unless it is Secure, host-only and Path=/.
@@ -252,6 +263,75 @@ export function createWebServer(deps: AppDeps): Server {
         send(ctx, 200, SHARE_IMAGES[match[1] as Lang], 'image/png', {
           'Cache-Control': 'public, max-age=86400',
         }),
+    },
+    {
+      // Anyone can paste a payment's signature and have the Solana network re-read it. Only
+      // signatures this instance recorded for a paid invoice reach the network, so the page cannot be
+      // used to spend the owner's RPC credits on arbitrary transactions.
+      method: 'GET',
+      pattern: /^\/verify$/,
+      handler: async (ctx) => {
+        const page = pageContext(ctx);
+        const lang = page.lang;
+        const signature = (ctx.query.get('tx') ?? '').trim();
+        if (signature === '') return send(ctx, 200, verifyPage(page, { state: 'form' }));
+        if (!SIGNATURE.test(signature)) {
+          return send(
+            ctx,
+            400,
+            verifyPage(page, { state: 'bad', signature: signature.slice(0, 100) }),
+          );
+        }
+        const invoice = store.getByPaymentSignature(signature);
+        if (!invoice?.payment) {
+          return send(ctx, 404, verifyPage(page, { state: 'unknown', signature }));
+        }
+        const attempt = verifyLimiter.take(ctx.ip);
+        if (!attempt.allowed) {
+          return send(
+            ctx,
+            429,
+            noticePage(ctx, 'tooManyRequestsTitle', 'tooManyRequestsText'),
+            'text/html; charset=utf-8',
+            { 'Retry-After': String(attempt.retryAfterSeconds) },
+          );
+        }
+
+        const explorerUrl = explorerTxUrl(signature, config.cluster);
+        const outcome = await verifier.verify(invoice);
+        if (outcome.kind === 'verified') {
+          const amount = `${displayAmount(outcome.received, invoice.asset.decimals, lang)} ${invoice.asset.symbol}`;
+          return send(
+            ctx,
+            200,
+            verifyPage(page, {
+              state: 'verified',
+              signature,
+              amount,
+              recipient: config.recipient,
+              explorerUrl,
+              ...(outcome.payer === undefined ? {} : { payer: outcome.payer }),
+              ...(outcome.blockTime === null
+                ? {}
+                : {
+                    time: formatDateTime(outcome.blockTime * 1000, config.utcOffsetMinutes, lang),
+                  }),
+            }),
+          );
+        }
+        if (outcome.kind === 'mismatch') {
+          return send(ctx, 200, verifyPage(page, { state: 'mismatch', signature, explorerUrl }));
+        }
+        return send(
+          ctx,
+          503,
+          verifyPage(page, { state: 'unavailable', signature, explorerUrl }),
+          'text/html; charset=utf-8',
+          {
+            'Retry-After': '30',
+          },
+        );
+      },
     },
     {
       method: 'GET',

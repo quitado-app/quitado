@@ -2,6 +2,7 @@ import { request as httpRequest, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mainnetRegistry, recordPayment } from '@quitado/core';
+import type { ChainReader, ParsedTransaction } from '../detection/types.ts';
 import { createInvoiceStore, openDatabase, type InvoiceStore } from '../storage/index.ts';
 import { createWebServer, type AppConfig } from './app.ts';
 import { createAuth, createRateLimiter } from './auth.ts';
@@ -36,11 +37,14 @@ describe('web app', () => {
     ...overrides,
   });
 
-  async function start(options: { config?: Partial<AppConfig>; publicMax?: number } = {}) {
+  async function start(
+    options: { config?: Partial<AppConfig>; publicMax?: number; chain?: ChainReader } = {},
+  ) {
     store = createInvoiceStore(openDatabase(':memory:'));
     server = createWebServer({
       config: config(options.config),
       store,
+      ...(options.chain === undefined ? {} : { chain: options.chain }),
       registry: mainnetRegistry(),
       auth: createAuth(SECRET),
       now: () => now,
@@ -1341,5 +1345,135 @@ describe('web app', () => {
     expect(response.body).toContain('Something went wrong');
     expect(response.body).not.toContain('secret-detail');
     expect(errors).toHaveLength(1);
+  });
+
+  describe('verify page (re-checks a payment on the chain)', () => {
+    // A valid-looking signature: base58, 87 characters.
+    const SIG = '5'.repeat(87);
+    const USDC = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+
+    /** A chain reader that serves one transaction and counts how often it was asked. */
+    function fakeChain(make: () => ParsedTransaction | null | Error) {
+      const calls = { count: 0 };
+      const chain: ChainReader = {
+        getSignaturesForAddress: () => Promise.resolve([]),
+        getTransaction: () => {
+          calls.count += 1;
+          const result = make();
+          return result instanceof Error ? Promise.reject(result) : Promise.resolve(result);
+        },
+      };
+      return { chain, calls };
+    }
+
+    /** A paid invoice whose recorded payment has SIG as its signature; returns what a chain would show. */
+    async function paidInvoice(reference = true) {
+      const cookie = await login();
+      const id = await createInvoiceViaForm(cookie);
+      const invoice = store.get(id)!;
+      store.settle(
+        recordPayment(invoice, { signature: SIG, amount: invoice.amount, receivedAt: NOW + 1000 }),
+      );
+      const tx: ParsedTransaction = {
+        signature: SIG,
+        err: null,
+        blockTime: Math.floor((NOW + 1000) / 1000),
+        accountKeys: reference
+          ? [RECIPIENT, 'Payer1111111111111111111111111111111111111', invoice.reference]
+          : [RECIPIENT],
+        preTokenBalances: [],
+        postTokenBalances: [
+          { accountIndex: 1, mint: USDC, owner: RECIPIENT, amount: invoice.amount },
+        ],
+      };
+      return { id, tx };
+    }
+
+    it('shows the form, and rejects what is not a signature', async () => {
+      await start();
+      const empty = await call('/verify');
+      expect(empty.status).toBe(200);
+      expect(empty.body).toContain('Check a payment on the blockchain');
+      expect(empty.body).toContain('name="tx"');
+      const bad = await call('/verify?tx=not-a-signature');
+      expect(bad.status).toBe(400);
+      expect(bad.body).toContain('does not look like a Solana transaction signature');
+    });
+
+    it('never asks the network about a signature this instance did not record', async () => {
+      const { chain, calls } = fakeChain(() => null);
+      await start({ chain });
+      const response = await call(`/verify?tx=${SIG}`);
+      expect(response.status).toBe(404);
+      expect(response.body).toContain('no payment recorded with that signature');
+      expect(calls.count).toBe(0);
+    });
+
+    it('confirms a recorded payment from what the chain says, and shows no client data', async () => {
+      const seen: { tx?: ParsedTransaction } = {};
+      const { chain, calls } = fakeChain(() => seen.tx ?? null);
+      await start({ chain });
+      seen.tx = (await paidInvoice()).tx;
+      const response = await call(`/verify?tx=${SIG}`);
+      expect(response.status).toBe(200);
+      expect(response.body).toContain('Confirmed on the blockchain');
+      expect(response.body).toContain('1,250.50 USDC');
+      expect(response.body).toContain(RECIPIENT);
+      expect(response.body).toContain(SIG);
+      expect(response.body).toContain(`https://explorer.solana.com/tx/${SIG}`);
+      // The page rests on the chain: nothing private from the database leaks into it.
+      expect(response.body).not.toContain('Acme Inc');
+      expect(response.body).not.toContain('Website redesign');
+      expect(calls.count).toBe(1);
+      // A finalized transaction cannot change, so a second look is served without the network.
+      await call(`/verify?tx=${SIG}`);
+      expect(calls.count).toBe(1);
+      // In Portuguese too.
+      const pt = await call(`/verify?tx=${SIG}&lang=pt-BR`);
+      expect(pt.body).toContain('Confirmado na blockchain');
+      expect(pt.body).toContain('1.250,50 USDC');
+    });
+
+    it('does not confirm a payment the chain does not show', async () => {
+      const seen: { tx?: ParsedTransaction } = {};
+      const { chain } = fakeChain(() => seen.tx ?? null);
+      await start({ chain });
+      seen.tx = (await paidInvoice(false)).tx;
+      const response = await call(`/verify?tx=${SIG}`);
+      expect(response.status).toBe(200);
+      expect(response.body).toContain('Not confirmed');
+      expect(response.body).not.toContain('Confirmed on the blockchain');
+    });
+
+    it('says it cannot check when the network cannot be read, and tries again next time', async () => {
+      const seen: { tx?: ParsedTransaction } = {};
+      let broken = true;
+      const { chain, calls } = fakeChain(() =>
+        broken ? new Error('rpc down') : (seen.tx ?? null),
+      );
+      await start({ chain });
+      seen.tx = (await paidInvoice()).tx;
+      const down = await call(`/verify?tx=${SIG}`);
+      expect(down.status).toBe(503);
+      expect(down.headers['retry-after']).toBe('30');
+      expect(down.body).toContain('Could not check right now');
+      broken = false;
+      const up = await call(`/verify?tx=${SIG}`);
+      expect(up.body).toContain('Confirmed on the blockchain');
+      expect(calls.count).toBe(2);
+    });
+
+    it('says it cannot check when no reader is configured', async () => {
+      await start();
+      await paidInvoice();
+      expect((await call(`/verify?tx=${SIG}`)).status).toBe(503);
+    });
+
+    it('is linked from the paid payment page', async () => {
+      await start();
+      const { id } = await paidInvoice();
+      const page = await call(`/pay/${id}`);
+      expect(page.body).toContain(`href="/verify?tx=${SIG}&amp;lang=en"`);
+    });
   });
 });
