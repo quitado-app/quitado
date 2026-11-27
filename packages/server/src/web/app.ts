@@ -14,6 +14,7 @@ import type { InvoiceStore } from '../storage/index.ts';
 import { APP_CSS, APP_JS } from './assets.ts';
 import { LANDING_CSS } from './landing-assets.ts';
 import { landingPage } from './landing.ts';
+import { SHARE_IMAGES } from './share-images.ts';
 import { createRateLimiter, type Auth, type RateLimiter } from './auth.ts';
 import { csvFileName, inPeriod, paidInvoicesCsv, parsePeriod } from './csv.ts';
 import { endOfDay, explorerTxUrl, formatDate } from './format.ts';
@@ -241,6 +242,15 @@ export function createWebServer(deps: AppDeps): Server {
       handler: (ctx) =>
         send(ctx, 200, LANDING_CSS, 'text/css; charset=utf-8', {
           'Cache-Control': 'public, max-age=300',
+        }),
+    },
+    {
+      // The link-preview image of the home page (og:image), one per language.
+      method: 'GET',
+      pattern: /^\/static\/og-(en|pt-BR)\.png$/,
+      handler: (ctx, match) =>
+        send(ctx, 200, SHARE_IMAGES[match[1] as Lang], 'image/png', {
+          'Cache-Control': 'public, max-age=86400',
         }),
     },
     {

@@ -212,6 +212,30 @@ describe('web app', () => {
       expect(byQuery.body).toContain('aria-current="true"');
     });
 
+    it('has link-preview tags and serves a real 1200x630 PNG per language', async () => {
+      for (const lang of ['en', 'pt-BR']) {
+        const page = await call(`/?lang=${lang}`, onSite());
+        const image = `https://quitado.example/static/og-${lang}.png`;
+        expect(page.body).toContain(`<meta property="og:image" content="${image}" />`);
+        expect(page.body).toContain('<meta property="og:image:width" content="1200" />');
+        expect(page.body).toContain('<meta property="og:image:height" content="630" />');
+        expect(page.body).toContain('<meta name="twitter:card" content="summary_large_image" />');
+        expect(page.body).toContain(`<meta name="twitter:image" content="${image}" />`);
+        expect(page.body).toContain('<meta property="og:image:alt" content="Quitado. ');
+
+        // The image is public on the site host, a PNG, and exactly the size the tags promise.
+        const png = await call(`/static/og-${lang}.png`, onSite());
+        expect(png.status).toBe(200);
+        expect(png.headers['content-type']).toBe('image/png');
+        expect(png.headers['cache-control']).toContain('public');
+        expect(png.buffer.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+        expect(png.buffer.readUInt32BE(16)).toBe(1200);
+        expect(png.buffer.readUInt32BE(20)).toBe(630);
+      }
+      // Only the two known languages exist.
+      expect((await call('/static/og-fr.png', onSite())).status).toBe(404);
+    });
+
     it('says the same things in both languages, and says what is not built', async () => {
       const [en, pt] = await Promise.all([
         call('/?lang=en', onSite()),

@@ -6,6 +6,7 @@
 import { displayAmount, formatDate } from './format.ts';
 import { html, raw, type Raw } from './html.ts';
 import { t, type Lang } from './i18n.ts';
+import { SHARE_IMAGE_HEIGHT, SHARE_IMAGE_WIDTH } from './share-images.ts';
 
 const REPO = 'https://github.com/quitado-app/quitado';
 const DOCS = `${REPO}/blob/main/docs`;
@@ -27,6 +28,8 @@ interface Link {
 interface Copy {
   htmlTitle: string;
   description: string;
+  /** Text alternative of the link-preview image, which repeats the words drawn on it. */
+  shareImageAlt: string;
   skip: string;
   githubLabel: string;
   hero: {
@@ -102,6 +105,8 @@ const en: Copy = {
   htmlTitle: 'Quitado: invoice in USDC and USDT, paid straight into your wallet',
   description:
     'Open-source, non-custodial invoicing on Solana for freelancers in Brazil. Send a link, your client pays, the invoice marks itself paid. Quitado holds no money and charges no fee.',
+  shareImageAlt:
+    'Quitado. Invoice in USDC and USDT, paid straight into your wallet. Open source, non-custodial, no Quitado fee, on Solana.',
   skip: 'Skip to the content',
   githubLabel: 'GitHub',
   hero: {
@@ -292,6 +297,8 @@ const ptBR: Copy = {
   htmlTitle: 'Quitado: cobre em USDC e USDT e receba direto na sua carteira',
   description:
     'Cobrança de código aberto, sem custódia, na Solana, para quem trabalha por conta própria no Brasil. Você manda um link, o cliente paga e a fatura aparece como paga. O Quitado não guarda dinheiro e não cobra taxa.',
+  shareImageAlt:
+    'Quitado. Cobre em USDC e USDT e receba direto na sua carteira. Código aberto, sem custódia, sem taxa do Quitado, na Solana.',
   skip: 'Ir para o conteúdo',
   githubLabel: 'GitHub',
   hero: {
@@ -537,6 +544,16 @@ export function landingPage(ctx: LandingContext): string {
         <meta property="og:description" content="${c.description}" />
         <meta property="og:url" content="${siteUrl}/?lang=${lang}" />
         <meta property="og:locale" content="${locale}" />
+        <meta property="og:image" content="${siteUrl}/static/og-${lang}.png" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="${SHARE_IMAGE_WIDTH}" />
+        <meta property="og:image:height" content="${SHARE_IMAGE_HEIGHT}" />
+        <meta property="og:image:alt" content="${c.shareImageAlt}" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="${c.htmlTitle}" />
+        <meta name="twitter:description" content="${c.description}" />
+        <meta name="twitter:image" content="${siteUrl}/static/og-${lang}.png" />
+        <meta name="twitter:image:alt" content="${c.shareImageAlt}" />
         <link rel="icon" href="${FAVICON}" />
         <link rel="stylesheet" href="/static/app.css" />
         <link rel="stylesheet" href="/static/landing.css" />
