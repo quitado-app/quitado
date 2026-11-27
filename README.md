@@ -60,6 +60,20 @@ This list is updated as each piece ships, newest last.
   ([#47](https://github.com/quitado-app/quitado/pull/47)). Excel shows `#####` when a date column is
   too narrow, which looks like an error; the stats page and the docs now say the file is fine and how
   to widen the column. Found by trying the export in Excel.
+- **27 Nov: a link-preview image for the home page**
+  ([#49](https://github.com/quitado-app/quitado/pull/49)). Sharing the site on X, LinkedIn or WhatsApp
+  showed a grey card with no image. There is now a 1200x630 PNG per language (Portuguese and English),
+  drawn with the site's own mark, served by the app itself, and the page has the `og:image` and
+  `twitter:card` tags. A test checks the tags and that the files are real 1200x630 PNGs.
+- **27 Nov: a public page to check a payment on the blockchain**
+  ([#50](https://github.com/quitado-app/quitado/pull/50)). On `/verify`, anyone can paste a transaction
+  signature and the page re-reads that transaction from the Solana network (at `finalized`), with the
+  same rules the payment detection uses, and shows the amount, token, recipient, payer and block time
+  that the chain itself reports. It is linked from the paid payment page, shows no client data, and
+  answers "not confirmed" when the chain does not show the recorded payment. Only signatures this
+  instance recorded reach the network, with their own rate limit, so it cannot be used to spend the
+  owner's RPC credits. Checked on the live instance against the author's two real mainnet test
+  payments (0.10 USDC and 0.10 USDT).
 
 ### What does not exist
 
