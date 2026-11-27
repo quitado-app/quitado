@@ -45,9 +45,21 @@ November 2026). The state at the start of the hackathon is the git tag
 
 ### During the hackathon (27 to 29 November)
 
-Everything committed after the `pre-hackathon` tag is the work done during the hackathon:
-[compare `pre-hackathon...main`](https://github.com/quitado-app/quitado/compare/pre-hackathon...main).
-A summary of it is written here when the hackathon work is finished.
+The hackathon work started at the git tag `hackathon-start` (27 November 2026, 12:00 Brasília time).
+Everything committed after it is the work done during the hackathon:
+[compare `hackathon-start...main`](https://github.com/quitado-app/quitado/compare/hackathon-start...main).
+This list is updated as each piece ships, newest last.
+
+- **27 Nov: CSV export of paid invoices for the accountant**
+  ([#46](https://github.com/quitado-app/quitado/pull/46)). An owner-only `/admin/export/paid.csv`,
+  with an optional year and month, linked from the stats page. It opens in Excel with accents and
+  columns in place (UTF-8 with a byte order mark; `;` and a decimal comma in Portuguese), amounts are
+  exact decimals built from integer base units, and cells are protected against spreadsheet formula
+  injection. No tax calculation, no conversion to reais, no outside calls, no new dependency.
+- **27 Nov: a spreadsheet tip next to the CSV button**
+  ([#47](https://github.com/quitado-app/quitado/pull/47)). Excel shows `#####` when a date column is
+  too narrow, which looks like an error; the stats page and the docs now say the file is fine and how
+  to widen the column. Found by trying the export in Excel.
 
 ### What does not exist
 
