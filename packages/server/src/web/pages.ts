@@ -562,6 +562,7 @@ export function statsPage(ctx: PageContext, stats: InvoiceStats): string {
                 ${monthOptions}
               </select>
               <p><button type="submit">${m('exportDownload')}</button></p>
+              <p class="muted">${m('exportSpreadsheetTip')}</p>
             </form>
           </div>`;
 

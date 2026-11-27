@@ -137,6 +137,10 @@ Cada linha é uma fatura paga: ID da fatura, data e hora do pagamento (no fuso h
 indicado no cabeçalho, por exemplo `Pago em (UTC-03:00)`), cliente, descrição, token (USDC ou USDT),
 valor faturado, valor recebido, assinatura da transação e referência do pagamento.
 
+Se a planilha mostrar `#####` na coluna da data, o arquivo está certo: o Excel leu o valor como data e
+a coluna está estreita. Dê um duplo clique na divisória entre dois cabeçalhos para alargá-la. O Excel
+também pode mostrar `0,1` no lugar de `0,10`; o valor é o mesmo.
+
 Os valores ficam em USDC ou USDT: o Quitado não converte para reais e não calcula imposto. Recibo não é
 nota fiscal. O que declarar, e como, é com o seu contador.
 
