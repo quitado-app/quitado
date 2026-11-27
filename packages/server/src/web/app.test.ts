@@ -1234,6 +1234,9 @@ describe('web app', () => {
       expect(pt).toContain('<input type="hidden" name="lang" value="pt-BR" />');
       expect(pt).toContain('o Quitado não converte para reais');
       expect(pt).toContain('Recibo não é nota fiscal.');
+      // A hint for the ##### a spreadsheet shows when a date column is too narrow.
+      expect(pt).toContain('Dica: se a planilha mostrar #####');
+      expect(page).toContain('Tip: if a spreadsheet shows #####');
     });
   });
 

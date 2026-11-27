@@ -149,6 +149,8 @@ const en = {
   exportMonth: 'Month',
   exportAllMonths: 'All months',
   exportDownload: 'Download CSV',
+  exportSpreadsheetTip:
+    'Tip: if a spreadsheet shows ##### in a column, widen it (double-click the border between two column headers). The file is fine: the column is only too narrow for the date.',
   exportBadPeriodTitle: 'Invalid period',
   exportBadPeriodText: 'Use a year such as 2026 and, if you want, a month from 1 to 12.',
   // Header row of the CSV file.
@@ -323,6 +325,8 @@ const ptBR: Record<MessageKey, string> = {
   exportMonth: 'Mês',
   exportAllMonths: 'Todos os meses',
   exportDownload: 'Baixar CSV',
+  exportSpreadsheetTip:
+    'Dica: se a planilha mostrar ##### em alguma coluna, alargue-a (dê um duplo clique na divisória entre dois cabeçalhos). O arquivo está certo: a coluna só está estreita para a data.',
   exportBadPeriodTitle: 'Período inválido',
   exportBadPeriodText: 'Use um ano como 2026 e, se quiser, um mês de 1 a 12.',
   csvInvoiceId: 'ID da fatura',

@@ -57,6 +57,10 @@ Format decisions:
   leading `'`, so a client name such as `=HYPERLINK(...)` is shown as text and never run by the
   spreadsheet.
 
+A spreadsheet may show `#####` in the "paid at" column: it read the value as a date and the column is
+too narrow for it. The file is fine; widening the column (double-click the border between two column
+headers) fixes it, and the export block on `/admin/stats` says so.
+
 The file is built on the instance from its own database; nothing is sent anywhere. Amounts stay in
 the token: Quitado does not convert to reais and calculates no tax, and a receipt is not a nota
 fiscal. What to declare, and how, is a question for your accountant.
