@@ -37,6 +37,84 @@ chain and marks the invoice as paid.
 
 You run your own instance (one owner per instance). There is no hosted service.
 
+## How it works
+
+```mermaid
+flowchart LR
+  A["Freelancer creates an invoice<br/>in the owner area"] --> B["Quitado makes a payment link and a<br/>Solana Pay QR with a unique reference"]
+  B --> C["Client pays from their<br/>own Solana wallet"]
+  C --> D[("Solana blockchain")]
+  E["Quitado reads the chain<br/>with @solana/kit"] --> D
+  E --> F{"Reference in the transaction,<br/>recipient balance up by the amount,<br/>transaction finalized?"}
+  F -- no --> E
+  F -- yes --> G["Invoice marked Paid<br/>PDF receipt and CSV export"]
+  G --> H["Anyone can re-check the payment<br/>on the chain at /verify"]
+  H --> D
+```
+
+Payment detection looks at what actually happened on chain instead of trusting a request: the
+transaction must cite the invoice's unique reference (a real Solana public key whose private half is
+thrown away), it must not have failed, and the recipient's balance of that token must have risen by at
+least the invoice amount, at the `finalized` commitment. A transfer typed in by hand, without the
+reference, never marks an invoice as paid. Details: [payment-detection.md](docs/payment-detection.md).
+
+## Quick start
+
+**Run your own instance** (Docker; Railway needs no commands, see the button above):
+
+```bash
+git clone https://github.com/quitado-app/quitado.git
+cd quitado
+cp .env.example .env     # set QUITADO_RECIPIENT (your wallet's public address) and QUITADO_ACCESS_SECRET
+docker compose up -d     # the app listens on 127.0.0.1:3000; open /admin and sign in with the secret
+```
+
+Put a reverse proxy with TLS in front of it to serve it to the internet, and set `QUITADO_BASE_URL`
+(see [docs/deploy.md](docs/deploy.md)). Step-by-step guides in Portuguese:
+[Railway](docs/pt-BR/railway.md) and [quick guide](docs/pt-BR/guia-rapido.md).
+
+**Develop** (Node.js 24 or newer):
+
+```bash
+npm ci                   # install, from the lockfile
+npm run build            # compile the TypeScript workspaces
+npm test                 # the unit tests; `npm run check` also runs format, lint and types
+npm start                # starts the server; reads .env when it exists
+```
+
+The main settings, all in [`.env.example`](.env.example): `QUITADO_RECIPIENT` (the wallet that receives
+payments: a public address, Quitado never holds a private key), `QUITADO_ACCESS_SECRET` (at least 20
+characters, to sign in), `QUITADO_CLUSTER` (`mainnet-beta`, or `devnet` with `QUITADO_ASSETS`),
+`QUITADO_BASE_URL`, `QUITADO_RPC_URL` and `QUITADO_UTC_OFFSET_MINUTES` (`-180` for Brazil).
+
+## Where the Solana parts live
+
+| What                                               | Where                                                                                    |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Solana Pay transfer request (link and QR)          | [`packages/server/src/web/solana-pay.ts`](packages/server/src/web/solana-pay.ts)         |
+| Unique payment reference (an ed25519 public key)   | [`packages/server/src/web/ids.ts`](packages/server/src/web/ids.ts)                       |
+| Reading the chain with `@solana/kit`               | [`packages/server/src/detection/chain.ts`](packages/server/src/detection/chain.ts)       |
+| The rule that decides "this transaction paid it"   | [`packages/server/src/detection/evaluate.ts`](packages/server/src/detection/evaluate.ts) |
+| Polling open invoices and settling them            | [`packages/server/src/detection/worker.ts`](packages/server/src/detection/worker.ts)     |
+| Re-checking a payment at `/verify`                 | [`packages/server/src/web/verify.ts`](packages/server/src/web/verify.ts)                 |
+| USDC and USDT mints, exact amounts (integer units) | [`packages/core/src/assets.ts`](packages/core/src/assets.ts), `money.ts`                 |
+| Invoices stored in SQLite (`node:sqlite`)          | [`packages/server/src/storage/`](packages/server/src/storage/)                           |
+| PDF receipt (own writer, no dependency)            | [`packages/server/src/receipt/`](packages/server/src/receipt/)                           |
+| CSV export for the accountant                      | [`packages/server/src/web/csv.ts`](packages/server/src/web/csv.ts)                       |
+| A real devnet payment, end to end                  | [`packages/spike-devnet/`](packages/spike-devnet/) and `detection/devnet.e2e.test.ts`    |
+
+Quitado deliberately deploys **no Solana program of its own**: payments go straight from the payer's
+wallet to the owner's, so there is nothing to hold on chain. It builds on the existing SPL Token
+program through USDC and USDT.
+
+| Address                                            | What                                    |
+| -------------------------------------------------- | --------------------------------------- |
+| [quitado.finance](https://quitado.finance)         | Home page                               |
+| [pay.quitado.finance](https://pay.quitado.finance) | The author's own instance, on mainnet   |
+| `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`     | USDC mint on Solana mainnet             |
+| `Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB`     | USDT mint on Solana mainnet             |
+| `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`      | SPL Token program, which both mints use |
+
 ## Hackathon: what was done before and what is new
 
 This project was started on 1 November 2026, before the Dev3pack Global Hackathon (27 to 29
