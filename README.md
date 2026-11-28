@@ -91,6 +91,11 @@ This list is updated as each piece ships, newest last.
   instance recorded reach the network, with their own rate limit, so it cannot be used to spend the
   owner's RPC credits. Checked on the live instance against the author's two real mainnet test
   payments (0.10 USDC and 0.10 USDT).
+- **27 Nov: a devnet section in the Portuguese Railway guide**
+  ([#53](https://github.com/quitado-app/quitado/pull/53)). A beta tester asked whether he could try
+  Quitado without real money, so the guide now explains how to use the Solana devnet, with test USDC
+  from Circle's faucet and the devnet USDC address that Circle lists in its own documentation. It says
+  plainly that this path is less tested than mainnet.
 
 ### What does not exist
 
