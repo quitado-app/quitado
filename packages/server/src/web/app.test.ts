@@ -6,6 +6,7 @@ import type { ChainReader, ParsedTransaction } from '../detection/types.ts';
 import { createInvoiceStore, openDatabase, type InvoiceStore } from '../storage/index.ts';
 import { createWebServer, type AppConfig } from './app.ts';
 import { createAuth, createRateLimiter } from './auth.ts';
+import { newInvoiceId } from './ids.ts';
 
 const SECRET = 'a-long-enough-secret-value-1234';
 const BASE = 'http://localhost:3000';
@@ -44,6 +45,10 @@ describe('web app', () => {
     server = createWebServer({
       config: config(options.config),
       store,
+      // Invoice ids are random base64url, so one in 64 would start with "-", which the CSV export
+      // rightly prefixes with an apostrophe against spreadsheet formulas. Tests that compare ids
+      // with the file must not depend on that luck, so they never get an id that starts with "-".
+      newId: () => newInvoiceId().replace(/^-/, 'A'),
       ...(options.chain === undefined ? {} : { chain: options.chain }),
       registry: mainnetRegistry(),
       auth: createAuth(SECRET),
